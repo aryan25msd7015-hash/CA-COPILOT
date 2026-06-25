@@ -90,3 +90,52 @@ def test_mfa_enrollment_login_recovery_and_session_controls():
             if org:
                 db.delete(org)
                 db.commit()
+
+
+@pytest.mark.skipif(not _database_available(), reason="PostgreSQL is not available")
+def test_password_reset_email_verification_and_lockout_controls():
+    api = TestClient(app)
+    suffix = uuid.uuid4().hex
+    org_name = f"Recovery Firm {suffix}"
+    email = f"recovery-{suffix}@example.com"
+    password = "StrongPass123!"
+    new_password = "NewStrongPass123!"
+    try:
+        registered = api.post("/auth/register", json={
+            "org_name": org_name,
+            "email": email,
+            "password": password,
+        })
+        assert registered.status_code == 201
+        headers = {"Authorization": f"Bearer {registered.json()['access_token']}"}
+
+        verification = api.post("/auth/email-verification/request", headers=headers)
+        assert verification.status_code == 200
+        verification_token = verification.json()["token"]
+        verified = api.post("/auth/email-verification/confirm", json={"token": verification_token})
+        assert verified.status_code == 200
+
+        for _ in range(5):
+            failed = api.post("/auth/login", json={"email": email, "password": "bad-password"})
+            assert failed.status_code in {401, 423}
+        locked = api.post("/auth/login", json={"email": email, "password": password})
+        assert locked.status_code == 423
+
+        reset = api.post("/auth/password-reset/request", json={"email": email})
+        assert reset.status_code == 200
+        reset_token = reset.json()["token"]
+        confirmed = api.post("/auth/password-reset/confirm", json={
+            "token": reset_token,
+            "new_password": new_password,
+        })
+        assert confirmed.status_code == 200
+
+        login = api.post("/auth/login", json={"email": email, "password": new_password})
+        assert login.status_code == 200
+        assert login.json()["access_token"]
+    finally:
+        with SessionLocal() as db:
+            org = db.query(Organization).filter(Organization.name == org_name).first()
+            if org:
+                db.delete(org)
+                db.commit()

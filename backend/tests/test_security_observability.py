@@ -48,6 +48,9 @@ def test_security_diagnostics_reports_runtime_controls():
         assert body["security_headers"]["x_content_type_options"] == "nosniff"
         assert body["auth"]["server_side_refresh_revocation"] is True
         assert body["auth"]["mfa_supported"] is True
+        assert body["providers"]["email"]["mode"] in {"development_response", "smtp"}
+        assert body["providers"]["payments"]["mode"] in {"manual_collection", "razorpay"}
+        assert body["providers"]["observability"]["metrics_enabled"] is True
         assert "active_keys" in body["rate_limiter"]
     finally:
         with SessionLocal() as db:

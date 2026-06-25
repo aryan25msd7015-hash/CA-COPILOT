@@ -51,6 +51,9 @@ def test_integration_health_and_whatsapp_provider_event():
         body = health.json()
         assert body["integrations"]["whatsapp"]["mode"] in {"development_fallback", "meta_business_api"}
         assert body["integrations"]["ocr"]["mode"] in {"local_placeholder", "azure_document_intelligence"}
+        assert body["integrations"]["email"]["mode"] in {"development_response", "smtp"}
+        assert body["integrations"]["payments"]["mode"] in {"manual_collection", "razorpay"}
+        assert body["integrations"]["observability"]["mode"] in {"metrics_only", "sentry_and_prometheus", "not_configured"}
         assert set(body["summary"].keys()) == {"ready", "degraded", "dev_fallback"}
 
         sent = api.post("/whatsapp/send-manual", headers=headers, json={

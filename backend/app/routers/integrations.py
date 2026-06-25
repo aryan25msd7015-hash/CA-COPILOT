@@ -9,6 +9,9 @@ from app.models.autopilot import AutopilotSyncRun
 from app.models.document import Document
 from app.models.system import SystemEvent
 from app.models.whatsapp_reminder import WhatsAppReminder
+from app.services.email_service import email_provider_status
+from app.services.observability import observability_status
+from app.services.payment_gateway import payment_gateway_status
 from app.utils.deps import get_current_user
 from app.utils.scoped_query import scoped
 
@@ -45,6 +48,9 @@ def integration_health(request: Request, db: Session = Depends(get_db), _=Depend
 
     event_failures = scoped(db, SystemEvent, org_id).filter(SystemEvent.status == "failed").count()
     events_recorded = scoped(db, SystemEvent, org_id).count()
+    email_status = email_provider_status()
+    payment_status = payment_gateway_status()
+    obs_status = observability_status()
 
     payload = {
         "organization_id": str(org_id),
@@ -78,6 +84,20 @@ def integration_health(request: Request, db: Session = Depends(get_db), _=Depend
                 "anthropic_configured": bool(settings.ANTHROPIC_API_KEY),
                 "openai_configured": bool(settings.OPENAI_API_KEY),
                 "mode": "llm_enabled" if settings.ANTHROPIC_API_KEY or settings.OPENAI_API_KEY else "deterministic_fallback",
+            },
+            "email": {
+                "status": _status(bool(email_status["configured"])),
+                **email_status,
+            },
+            "payments": {
+                "status": _status(bool(payment_status["configured"])),
+                **payment_status,
+            },
+            "observability": {
+                "status": _status(bool(obs_status["sentry_configured"] or obs_status["metrics_enabled"])),
+                "configured": bool(obs_status["sentry_configured"] or obs_status["metrics_enabled"]),
+                "mode": "sentry_and_prometheus" if obs_status["sentry_configured"] and obs_status["metrics_enabled"] else "metrics_only" if obs_status["metrics_enabled"] else "not_configured",
+                **obs_status,
             },
             "tally": {
                 "status": _status(True, tally_failed),

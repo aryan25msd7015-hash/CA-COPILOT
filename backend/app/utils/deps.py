@@ -3,9 +3,18 @@ from datetime import datetime, timedelta, timezone
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from app.database import get_db
+from app.models.organization import Organization
 from app.models.user import User
 from app.utils.scoped_query import scoped
 from typing import List
+
+
+MFA_ENROLLMENT_PATHS = {
+    "/auth/mfa/setup",
+    "/auth/mfa/enable",
+    "/auth/logout",
+    "/auth/email-verification/request",
+}
 
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
@@ -18,6 +27,10 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     if user.status != "active":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User is not active")
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if org and (org.security_policy or {}).get("require_mfa") and not user.mfa_enabled:
+        if request.url.path not in MFA_ENROLLMENT_PATHS:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="MFA enrollment required by organization")
     now = datetime.now(timezone.utc)
     last_active = user.last_active_at
     if last_active and last_active.tzinfo is None:

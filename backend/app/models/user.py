@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Boolean, Column, String, Text, DateTime, func, ForeignKey, CheckConstraint, Index
+from sqlalchemy import Boolean, Column, String, Text, DateTime, func, ForeignKey, CheckConstraint, Index, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -29,6 +29,13 @@ class User(Base):
     mfa_secret = Column(Text)
     mfa_recovery_hashes = Column(Text)
     mfa_confirmed_at = Column(DateTime(timezone=True))
+    email_verified_at = Column(DateTime(timezone=True))
+    email_verification_token_hash = Column(Text)
+    email_verification_expires_at = Column(DateTime(timezone=True))
+    failed_login_count = Column(Integer, nullable=False, default=0)
+    locked_until = Column(DateTime(timezone=True))
+    password_reset_token_hash = Column(Text)
+    password_reset_expires_at = Column(DateTime(timezone=True))
     last_active_at = Column(DateTime(timezone=True))
     tokens_revoked_at = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

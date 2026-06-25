@@ -15,7 +15,7 @@ engine = create_engine(
     pool_pre_ping=True,          # detect stale connections
     pool_size=10,
     max_overflow=20,
-    echo=settings.ENV == "development",
+    echo=settings.SQL_ECHO,
 )
 
 # ── Session factory ────────────────────────────────────────────────────────

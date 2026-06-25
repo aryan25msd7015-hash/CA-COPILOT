@@ -1,0 +1,55 @@
+services:
+  backend:
+    build: ./backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${WEB_CONCURRENCY:-4}
+    env_file:
+      - ./backend/.env.production
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    restart: unless-stopped
+
+  worker-ocr:
+    build: ./backend
+    command: celery -A app.celery_app worker -Q ocr -c ${OCR_WORKER_CONCURRENCY:-2} --loglevel=${CELERY_LOG_LEVEL:-info}
+    env_file:
+      - ./backend/.env.production
+    restart: unless-stopped
+
+  worker-heavy:
+    build: ./backend
+    command: celery -A app.celery_app worker -Q heavy -c ${HEAVY_WORKER_CONCURRENCY:-4} --loglevel=${CELERY_LOG_LEVEL:-info}
+    env_file:
+      - ./backend/.env.production
+    restart: unless-stopped
+
+  worker-llm:
+    build: ./backend
+    command: celery -A app.celery_app worker -Q llm -c ${LLM_WORKER_CONCURRENCY:-2} --loglevel=${CELERY_LOG_LEVEL:-info}
+    env_file:
+      - ./backend/.env.production
+    restart: unless-stopped
+
+  worker-whatsapp:
+    build: ./backend
+    command: celery -A app.celery_app worker -Q whatsapp -c ${WHATSAPP_WORKER_CONCURRENCY:-2} --loglevel=${CELERY_LOG_LEVEL:-info}
+    env_file:
+      - ./backend/.env.production
+    restart: unless-stopped
+
+  beat:
+    build: ./backend
+    command: celery -A app.celery_app beat --loglevel=${CELERY_LOG_LEVEL:-info}
+    env_file:
+      - ./backend/.env.production
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    command: sh -c "npm run build && npm run start"
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?set NEXT_PUBLIC_API_URL}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped

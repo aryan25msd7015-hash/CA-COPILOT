@@ -178,9 +178,9 @@
   "failures": [],
   "failure_count": 0,
   "latency_ms": {
-    "min": 12.9,
-    "max": 188.53,
-    "avg": 29.32
+    "min": 12.02,
+    "max": 500.58,
+    "avg": 32.25
   },
   "overall": {
     "cases": 2003,

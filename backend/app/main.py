@@ -5,9 +5,10 @@ import time
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse, Response
 
 from app.config import settings
 from app.middleware.tenant import tenant_middleware
@@ -16,15 +17,20 @@ from app.routers import (
     diagnostics, health_scores, integrations, invoices, notices, organizations, query, reconciliation,
     tasks, users, whatsapp, extensions, practice_ops,
 )
+from app.services.observability import configure_observability, record_request, render_metrics
 from app.utils.security import client_ip, rate_limit_policy, rate_limiter
 
 logger = logging.getLogger("ca_platform")
+configure_observability()
 
 app = FastAPI(
     title="CA Intelligence Platform",
     version="1.0.0",
     description="Multi-tenant SaaS for Indian CA firms.",
 )
+trusted_hosts = [host.strip() for host in settings.TRUSTED_HOSTS.split(",") if host.strip()]
+if trusted_hosts:
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=trusted_hosts)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.FRONTEND_URL],
@@ -57,7 +63,8 @@ async def security_and_audit_middleware(request, call_next):
                 },
             )
     response = await call_next(request)
-    duration_ms = round((time.perf_counter() - started) * 1000, 2)
+    duration_seconds = time.perf_counter() - started
+    duration_ms = round(duration_seconds * 1000, 2)
     remaining = locals().get("remaining")
     limit = locals().get("limit")
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -70,6 +77,7 @@ async def security_and_audit_middleware(request, call_next):
         response.headers["X-RateLimit-Remaining"] = str(remaining)
     if settings.ENV == "production":
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    record_request(request.method, request.url.path, response.status_code, duration_seconds)
     logger.info(json.dumps({
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "request_id": request_id,
@@ -115,6 +123,16 @@ for router, prefix, tag in ROUTERS:
 @app.get("/", tags=["health"])
 def health_check():
     return {"status": "ok", "version": "1.0.0"}
+
+
+@app.get("/metrics", include_in_schema=False)
+def metrics(request: Request):
+    if settings.ENV == "production" and settings.METRICS_BEARER_TOKEN:
+        expected = f"Bearer {settings.METRICS_BEARER_TOKEN}"
+        if request.headers.get("authorization") != expected:
+            raise HTTPException(status_code=401, detail="Metrics token required")
+    body, media_type = render_metrics()
+    return Response(content=body, media_type=media_type)
 
 
 @app.on_event("startup")

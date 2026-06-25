@@ -31,6 +31,7 @@ interface Invoice {
   outstanding: number;
   days_overdue: number;
   status: string;
+  payment_link?: string;
 }
 
 interface BillingPlan {
@@ -56,6 +57,13 @@ interface PaymentReceipt {
   reference?: string;
 }
 
+interface PlanUsage {
+  plan: string;
+  limits: Record<string, number | null>;
+  usage: Record<string, number>;
+  status: Record<string, string>;
+}
+
 const today = new Date().toISOString().slice(0, 10);
 
 function money(value: number) {
@@ -68,6 +76,7 @@ export default function BillingPage() {
   const [paymentClientId, setPaymentClientId] = useState('');
   const [selectedInvoiceId, setSelectedInvoiceId] = useState('');
   const [paymentAmount, setPaymentAmount] = useState('');
+  const [gatewayMessage, setGatewayMessage] = useState('');
   const [form, setForm] = useState({
     client_id: '',
     description: 'Monthly professional fees',
@@ -86,6 +95,7 @@ export default function BillingPage() {
   });
 
   const overview = useQuery<BillingOverview>({ queryKey: ['billing-overview'], queryFn: () => api.get('/billing/overview').then(r => r.data) });
+  const planUsage = useQuery<PlanUsage>({ queryKey: ['billing-plan-usage'], queryFn: () => api.get('/billing/plan-usage').then(r => r.data) });
   const invoices = useQuery<Invoice[]>({
     queryKey: ['billing-invoices', invoiceFilters],
     queryFn: () => api.get('/billing/invoices', {
@@ -107,7 +117,7 @@ export default function BillingPage() {
   const clients = useQuery<Client[]>({ queryKey: ['clients'], queryFn: () => api.get('/clients').then(r => r.data) });
 
   async function refreshBilling() {
-    await Promise.all([overview.refetch(), invoices.refetch(), plans.refetch(), payments.refetch()]);
+    await Promise.all([overview.refetch(), planUsage.refetch(), invoices.refetch(), plans.refetch(), payments.refetch()]);
   }
 
   async function createInvoice(event: FormEvent) {
@@ -158,6 +168,21 @@ export default function BillingPage() {
     await refreshBilling();
   }
 
+  async function generatePaymentLink(invoice: Invoice) {
+    setGatewayMessage('');
+    try {
+      const response = await api.post(`/billing/invoices/${invoice.id}/payment-link`);
+      const link = response.data?.invoice?.payment_link;
+      setGatewayMessage(link ? `Payment link generated for ${invoice.invoice_no}` : `Gateway request completed for ${invoice.invoice_no}`);
+      await refreshBilling();
+    } catch (err: unknown) {
+      const detail = typeof err === 'object' && err && 'response' in err
+        ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : undefined;
+      setGatewayMessage(detail || 'Could not generate payment link');
+    }
+  }
+
   const selectedInvoice = (invoices.data || []).find(item => item.id === selectedInvoiceId);
   const metrics = [
     ['Outstanding', money(overview.data?.outstanding || 0)],
@@ -183,6 +208,29 @@ export default function BillingPage() {
           </div>
         ))}
       </div>
+
+      <section className="rounded-lg border border-slate-200 bg-white p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">Plan usage</h2>
+            <p className="mt-1 text-xs text-slate-500">Current commercial limits and tenant consumption.</p>
+          </div>
+          <StatusBadge value={planUsage.data?.plan || 'plan'} />
+        </div>
+        <div className="mt-3 grid gap-3 md:grid-cols-5">
+          {Object.entries(planUsage.data?.usage || {}).map(([key, used]) => {
+            const limit = planUsage.data?.limits?.[key];
+            const status = planUsage.data?.status?.[key] || 'ok';
+            return (
+              <div key={key} className="rounded-lg bg-slate-50 p-3">
+                <p className="text-xs capitalize text-slate-500">{key.replaceAll('_', ' ')}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-950">{used} / {limit ?? 'unlimited'}</p>
+                <p className={`mt-1 text-xs font-medium ${status === 'exceeded' ? 'text-rose-600' : status === 'near_limit' ? 'text-amber-600' : 'text-emerald-600'}`}>{status.replace('_', ' ')}</p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-slate-900">Ageing</h2>
@@ -216,6 +264,7 @@ export default function BillingPage() {
             <ClientSelect clients={clients.data || []} value={invoiceFilters.client_id} onChange={value => setInvoiceFilters({ ...invoiceFilters, client_id: value })} />
             <input type="date" value={invoiceFilters.due_to} onChange={e => setInvoiceFilters({ ...invoiceFilters, due_to: e.target.value })} className="rounded-lg border px-3 py-2 text-sm" />
           </div>
+          {gatewayMessage && <p className="mt-3 rounded-lg bg-sky-50 px-3 py-2 text-xs font-medium text-sky-700">{gatewayMessage}</p>}
           <div className="mt-3 overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase text-slate-500">
@@ -240,6 +289,16 @@ export default function BillingPage() {
                     <td className="px-4 py-3"><StatusBadge value={invoice.status} /></td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-2">
+                        {invoice.payment_link && (
+                          <a href={invoice.payment_link} target="_blank" rel="noreferrer" className="rounded-md border border-sky-200 px-2 py-1 text-xs text-sky-700">
+                            Pay link
+                          </a>
+                        )}
+                        {invoice.outstanding > 0 && !invoice.payment_link && (
+                          <button onClick={() => generatePaymentLink(invoice)} className="rounded-md border border-sky-200 px-2 py-1 text-xs text-sky-700">
+                            Checkout
+                          </button>
+                        )}
                         {invoice.outstanding > 0 && <button onClick={() => { setSelectedInvoiceId(invoice.id); setPaymentAmount(String(invoice.outstanding)); }} className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-700">Receipt</button>}
                         {invoice.status !== 'void' && <button onClick={() => markInvoice(invoice, 'void')} className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-700">Void</button>}
                       </div>

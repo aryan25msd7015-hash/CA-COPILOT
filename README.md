@@ -38,7 +38,7 @@ push either Tally CSV exports or vouchers fetched from a local Tally HTTP server
 ## Stack
 
 - FastAPI, SQLAlchemy, Alembic, Celery, PostgreSQL with pgvector, Redis
-- Next.js 14, TypeScript, Tailwind CSS, TanStack Query, AG Grid
+- Next.js 16, TypeScript, Tailwind CSS, TanStack Query, AG Grid
 - Optional integrations: AWS S3, Azure Document Intelligence, Anthropic/OpenAI,
   and Meta WhatsApp Business API
 
@@ -74,8 +74,8 @@ push either Tally CSV exports or vouchers fetched from a local Tally HTTP server
 
 7. Open the frontend at `http://localhost:3000` and sign in with:
 
-   - ID: `demo@cacopilot.in`
-   - Passkey: `DemoPass@2026`
+   - ID: `demo@cacopilot.example.com`
+   - Passkey: `DemoPass123`
 
    You can also register a new firm for a clean workspace.
    API documentation is available at `http://localhost:8000/docs`.
@@ -85,6 +85,8 @@ push either Tally CSV exports or vouchers fetched from a local Tally HTTP server
 ```powershell
 docker compose exec backend pytest -q
 docker compose exec frontend npm run build
+docker compose exec frontend npm audit --omit=dev
+npm --prefix frontend run test:e2e
 docker compose config --quiet
 ```
 
@@ -93,7 +95,9 @@ docker compose config --quiet
 `DATABASE_URL`, `REDIS_URL`, `SECRET_KEY`, `S3_BUCKET`, `AWS_REGION`,
 `AZURE_DOC_ENDPOINT`, `AZURE_DOC_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`,
 `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID`, `WHATSAPP_VERIFY_TOKEN`, `FRONTEND_URL`,
-and `ENV`.
+`EMAIL_PROVIDER`, `SMTP_HOST`, `SMTP_USERNAME`, `SMTP_PASSWORD`,
+`PAYMENT_PROVIDER`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`,
+`RAZORPAY_WEBHOOK_SECRET`, `SENTRY_DSN`, `METRICS_BEARER_TOKEN`, and `ENV`.
 
 Without optional provider credentials, the core application remains available,
 but the corresponding OCR, LLM, storage, or WhatsApp workflow cannot complete.
@@ -101,8 +105,12 @@ but the corresponding OCR, LLM, storage, or WhatsApp workflow cannot complete.
 ## Production Notes
 
 - Store secrets in AWS Secrets Manager and set `ENV=production`.
+- Start from `backend/.env.production.example` and `frontend/.env.production.example`; never deploy the development credentials in `docker-compose.yml`.
+- Use `docker-compose.prod.yml` only with managed PostgreSQL, managed Redis, TLS termination, and a real `NEXT_PUBLIC_API_URL`.
 - Use separate least-privilege application and migration database roles.
 - Terminate TLS at the load balancer and restrict backend ingress.
 - Run Alembic migrations before deploying application tasks.
 - Configure S3 CORS for direct browser uploads from the frontend origin.
 - Retain database backups and application audit logs according to firm policy.
+- Keep the GitHub Actions quality gates green before release: backend tests, frontend lint/build, dependency audits, migrations, and the 2,000-company synthetic regression.
+- Follow the full launch checklist in `docs/production_launch_runbook.md` for email, Razorpay, observability, cloud deployment, and real provider integrations.

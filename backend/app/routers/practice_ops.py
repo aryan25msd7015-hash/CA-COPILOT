@@ -1,4 +1,5 @@
 """APIs for practice operations gaps: work, billing, portal, team, vault, imports, and reports."""
+import json
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional
 
@@ -17,6 +18,12 @@ from app.models.practice_ops import (
     PracticeTask, SavedView,
 )
 from app.models.user import User
+from app.models.organization import Organization
+from app.services.plan_limits import plan_limits, usage_status
+from app.services.payment_gateway import (
+    PaymentGatewayError, create_payment_link, parse_razorpay_payment_event,
+    payment_gateway_status, verify_razorpay_webhook,
+)
 from app.utils.deps import get_current_user, require_role
 from app.utils.scoped_query import scoped
 
@@ -457,6 +464,33 @@ def billing_overview(request: Request, db: Session = Depends(get_db), _=Depends(
     }
 
 
+@router.get("/billing/plan-usage")
+def billing_plan_usage(request: Request, db: Session = Depends(get_db), _=Depends(require_role(["partner", "manager"]))):
+    org = db.query(Organization).filter(Organization.id == request.state.org_id).first()
+    if not org:
+        raise HTTPException(404, "Organization not found")
+    limits = plan_limits(org.plan)
+    period_start = date.today().replace(day=1)
+    period_start_dt = datetime.combine(period_start, datetime.min.time(), tzinfo=timezone.utc)
+    usage = {
+        "clients": scoped(db, Client, request.state.org_id).count(),
+        "users": scoped(db, User, request.state.org_id).count(),
+        "documents_per_month": scoped(db, Document, request.state.org_id).filter(Document.created_at >= period_start_dt).count(),
+        "ai_queries_per_month": 0,
+        "storage_gb": round(
+            sum(float(row.file_size_bytes or 0) for row in scoped(db, Document, request.state.org_id).all()) / (1024 ** 3),
+            3,
+        ),
+    }
+    return {
+        "plan": org.plan,
+        "period_start": period_start.isoformat(),
+        "limits": limits,
+        "usage": usage,
+        "status": {key: usage_status(value, limits.get(key)) for key, value in usage.items()},
+    }
+
+
 @router.get("/billing/plans")
 def billing_plans(request: Request, client_id: str = "", active: str = "", db: Session = Depends(get_db), _=Depends(require_role(["partner", "manager"]))):
     query = scoped(db, BillingPlan, request.state.org_id)
@@ -544,6 +578,11 @@ def payments(request: Request, client_id: str = "", skip: int = 0, limit: int = 
     } for row in rows]
 
 
+@router.get("/billing/gateway-status")
+def billing_gateway_status(_=Depends(require_role(["partner", "manager"]))):
+    return payment_gateway_status()
+
+
 @router.post("/billing/invoices", status_code=201)
 def create_invoice(payload: InvoiceRequest, request: Request, db: Session = Depends(get_db), user=Depends(require_role(["partner", "manager"]))):
     _client(db, request.state.org_id, payload.client_id)
@@ -565,6 +604,30 @@ def create_invoice(payload: InvoiceRequest, request: Request, db: Session = Depe
     db.commit()
     db.refresh(row)
     return _invoice_out(row, _client_names(db, request.state.org_id))
+
+
+@router.post("/billing/invoices/{invoice_id}/payment-link")
+def create_invoice_payment_link(invoice_id: str, request: Request, db: Session = Depends(get_db), _=Depends(require_role(["partner", "manager"]))):
+    invoice = scoped(db, PracticeInvoice, request.state.org_id).filter(PracticeInvoice.id == invoice_id).first()
+    if not invoice:
+        raise HTTPException(404, "Invoice not found")
+    client = _client(db, request.state.org_id, str(invoice.client_id))
+    org = db.query(Organization).filter(Organization.id == request.state.org_id).first()
+    try:
+        link = create_payment_link(invoice, client, org)
+    except PaymentGatewayError as exc:
+        raise HTTPException(503, str(exc)) from exc
+    invoice.payment_link = link.get("payment_link")
+    db.commit()
+    db.refresh(invoice)
+    return {
+        "invoice": _invoice_out(invoice, _client_names(db, request.state.org_id)),
+        "gateway": {
+            "provider": link.get("provider"),
+            "provider_reference": link.get("provider_reference"),
+            "status": link.get("status"),
+        },
+    }
 
 
 @router.patch("/billing/invoices/{invoice_id}")
@@ -599,6 +662,58 @@ def record_payment(invoice_id: str, payload: PaymentRequest, request: Request, d
     db.add(receipt)
     db.commit()
     return {"id": str(receipt.id), "invoice": _invoice_out(invoice, _client_names(db, request.state.org_id))}
+
+
+@router.post("/billing/webhooks/razorpay")
+async def razorpay_webhook(request: Request, db: Session = Depends(get_db)):
+    raw_body = await request.body()
+    signature = request.headers.get("x-razorpay-signature")
+    try:
+        verified = verify_razorpay_webhook(raw_body, signature)
+    except PaymentGatewayError as exc:
+        raise HTTPException(503, str(exc)) from exc
+    if not verified:
+        raise HTTPException(400, "Invalid Razorpay signature")
+    try:
+        payload = json.loads(raw_body.decode("utf-8"))
+    except json.JSONDecodeError as exc:
+        raise HTTPException(400, "Invalid webhook payload") from exc
+    event = parse_razorpay_payment_event(payload)
+    if event["event"] not in {"payment_link.paid", "payment.captured"}:
+        return {"status": "ignored", "event": event["event"]}
+    if not event.get("invoice_id") or event["amount"] <= 0:
+        raise HTTPException(422, "Webhook is missing invoice metadata")
+    invoice = db.query(PracticeInvoice).filter(
+        PracticeInvoice.id == event["invoice_id"],
+        PracticeInvoice.org_id == event["org_id"],
+    ).first()
+    if not invoice:
+        raise HTTPException(404, "Invoice not found")
+    reference = event.get("payment_id") or event.get("payment_link_id")
+    existing = db.query(PaymentReceipt).filter(
+        PaymentReceipt.org_id == invoice.org_id,
+        PaymentReceipt.reference == reference,
+    ).first()
+    if existing:
+        return {"status": "duplicate_ignored", "payment_id": reference}
+    amount = min(event["amount"], max(float(invoice.total or 0) - float(invoice.amount_paid or 0), 0))
+    if amount <= 0:
+        return {"status": "already_paid", "payment_id": reference}
+    receipt = PaymentReceipt(
+        org_id=invoice.org_id,
+        invoice_id=invoice.id,
+        client_id=invoice.client_id,
+        paid_at=date.today(),
+        amount=amount,
+        mode=f"razorpay:{event.get('method') or 'payment'}",
+        reference=reference,
+        notes=f"Razorpay webhook {event['event']}",
+    )
+    invoice.amount_paid = float(invoice.amount_paid or 0) + amount
+    invoice.status = "paid" if float(invoice.amount_paid or 0) >= float(invoice.total or 0) else "part_paid"
+    db.add(receipt)
+    db.commit()
+    return {"status": "recorded", "receipt_id": str(receipt.id), "invoice_id": str(invoice.id)}
 
 
 class PortalContactRequest(BaseModel):

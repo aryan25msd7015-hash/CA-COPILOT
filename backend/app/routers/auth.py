@@ -17,8 +17,14 @@ from app.models.refresh_token import RefreshToken
 from app.models.system import OrganizationAgentState, SystemAuditLog
 from app.models.user import User
 from app.schemas.auth import (
-    LoginRequest, LoginResponse, MfaDisableRequest, MfaSetupResponse, MfaVerifyRequest,
+    EmailVerificationConfirmRequest, LoginRequest, LoginResponse, MfaDisableRequest,
+    MfaSetupResponse, MfaVerifyRequest, PasswordResetConfirmRequest, PasswordResetRequest,
     RefreshRequest, RegisterRequest, TokenResponse,
+)
+from app.config import settings
+from app.services.email_service import (
+    EmailDeliveryError, assert_email_ready_for_production,
+    send_email_verification_email, send_password_reset_email,
 )
 from app.utils.jwt_utils import create_access_token
 from app.utils.events import publish_event
@@ -70,6 +76,26 @@ def _token_data(user: User) -> dict:
 
 def _hash_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _is_future(value: datetime | None) -> bool:
+    if not value:
+        return False
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value > datetime.now(timezone.utc)
+
+
+def _public_token_response(token: str, delivery: dict | None = None) -> dict:
+    delivery = delivery or {}
+    payload = {
+        "detail": "If the email exists, a link will be sent.",
+        "delivery_mode": delivery.get("mode") or ("development_response" if settings.ENV != "production" else "email_provider_pending"),
+        "delivered": bool(delivery.get("delivered")),
+    }
+    if settings.ENV != "production" and not delivery.get("delivered"):
+        payload["token"] = token
+    return payload
 
 
 def _totp_code(secret: str, timestep: int | None = None) -> str:
@@ -235,6 +261,21 @@ def _write_system_audit(db: Session, request: Request, org: Organization, user: 
     ))
 
 
+def _record_failed_login(db: Session, user: User, request: Request) -> None:
+    user.failed_login_count = int(user.failed_login_count or 0) + 1
+    if user.failed_login_count >= settings.MAX_FAILED_LOGIN_ATTEMPTS:
+        user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCOUNT_LOCKOUT_MINUTES)
+        _write_system_audit(db, request, user.organization, user, "AUTH_ACCOUNT_LOCKED", {
+            "failed_login_count": user.failed_login_count,
+            "locked_until": user.locked_until.isoformat(),
+        })
+
+
+def _clear_login_risk(user: User) -> None:
+    user.failed_login_count = 0
+    user.locked_until = None
+
+
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 def register(req: RegisterRequest, request: Request, db: Session = Depends(get_db)):
     email = _normalize_email(req.email)
@@ -279,8 +320,14 @@ def register(req: RegisterRequest, request: Request, db: Session = Depends(get_d
 @router.post("/login", response_model=LoginResponse)
 def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == _normalize_email(req.email)).first()
+    if user and _is_future(user.locked_until):
+        raise HTTPException(status_code=423, detail="Account temporarily locked")
     if not user or not pwd_ctx.verify(req.password, user.password_hash):
+        if user:
+            _record_failed_login(db, user, request)
+            db.commit()
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    _clear_login_risk(user)
     if user.mfa_enabled:
         challenge = _mfa_challenge(user)
         verified = _verify_totp(user.mfa_secret, req.mfa_code) or _consume_recovery_code(user, req.recovery_code)
@@ -290,6 +337,93 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
     tokens = _issue_tokens(db, user, request, req.device_hash)
     db.commit()
     return LoginResponse(access_token=tokens.access_token, refresh_token=tokens.refresh_token)
+
+
+@router.post("/password-reset/request")
+def request_password_reset(payload: PasswordResetRequest, request: Request, db: Session = Depends(get_db)):
+    try:
+        assert_email_ready_for_production()
+    except EmailDeliveryError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    user = db.query(User).filter(User.email == _normalize_email(payload.email)).first()
+    if user:
+        token = secrets.token_urlsafe(48)
+        user.password_reset_token_hash = _hash_token(token)
+        user.password_reset_expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES)
+        try:
+            delivery = send_password_reset_email(user.email, token)
+        except EmailDeliveryError as exc:
+            db.rollback()
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        _write_system_audit(db, request, user.organization, user, "AUTH_PASSWORD_RESET_REQUESTED", {
+            "expires_at": user.password_reset_expires_at.isoformat(),
+            "delivery_mode": delivery.get("mode"),
+            "delivered": delivery.get("delivered"),
+        })
+        db.commit()
+        return _public_token_response(token, delivery)
+    return {"detail": "If the email exists, a reset link will be sent."}
+
+
+@router.post("/password-reset/confirm")
+def confirm_password_reset(payload: PasswordResetConfirmRequest, request: Request, db: Session = Depends(get_db)):
+    token_hash = _hash_token(payload.token)
+    user = db.query(User).filter(User.password_reset_token_hash == token_hash).first()
+    if not user or not _is_future(user.password_reset_expires_at):
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    user.password_hash = pwd_ctx.hash(payload.new_password)
+    user.password_reset_token_hash = None
+    user.password_reset_expires_at = None
+    _clear_login_risk(user)
+    revoked_at = datetime.now(timezone.utc)
+    user.tokens_revoked_at = revoked_at
+    db.query(RefreshToken).filter(
+        RefreshToken.user_id == user.id,
+        RefreshToken.revoked.is_(False),
+    ).update({"revoked": True, "revoked_at": revoked_at}, synchronize_session=False)
+    _write_system_audit(db, request, user.organization, user, "AUTH_PASSWORD_RESET_CONFIRMED", {
+        "sessions_revoked": True,
+    })
+    db.commit()
+    return {"detail": "Password reset complete"}
+
+
+@router.post("/email-verification/request")
+def request_email_verification(request: Request, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == request.state.user_id, User.org_id == request.state.org_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.email_verified_at:
+        return {"detail": "Email is already verified"}
+    token = secrets.token_urlsafe(48)
+    user.email_verification_token_hash = _hash_token(token)
+    user.email_verification_expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS)
+    try:
+        delivery = send_email_verification_email(user.email, token)
+    except EmailDeliveryError as exc:
+        db.rollback()
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    _write_system_audit(db, request, user.organization, user, "AUTH_EMAIL_VERIFICATION_REQUESTED", {
+        "expires_at": user.email_verification_expires_at.isoformat(),
+        "delivery_mode": delivery.get("mode"),
+        "delivered": delivery.get("delivered"),
+    })
+    db.commit()
+    return _public_token_response(token, delivery)
+
+
+@router.post("/email-verification/confirm")
+def confirm_email_verification(payload: EmailVerificationConfirmRequest, request: Request, db: Session = Depends(get_db)):
+    token_hash = _hash_token(payload.token)
+    user = db.query(User).filter(User.email_verification_token_hash == token_hash).first()
+    if not user or not _is_future(user.email_verification_expires_at):
+        raise HTTPException(status_code=400, detail="Invalid or expired verification token")
+    user.email_verified_at = datetime.now(timezone.utc)
+    user.email_verification_token_hash = None
+    user.email_verification_expires_at = None
+    _write_system_audit(db, request, user.organization, user, "AUTH_EMAIL_VERIFIED", {})
+    db.commit()
+    return {"detail": "Email verified"}
 
 
 @router.post("/refresh", response_model=TokenResponse)
