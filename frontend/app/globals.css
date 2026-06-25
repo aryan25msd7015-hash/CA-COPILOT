@@ -1,0 +1,254 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #f5f7fb;
+  --foreground: #111827;
+  --surface: #ffffff;
+  --muted: #667085;
+  --accent: #0a84ff;
+  --accent-2: #14b8a6;
+  --danger: #e11d48;
+  --line: rgba(15, 23, 42, 0.1);
+  --shadow-soft: 0 18px 50px rgba(15, 23, 42, 0.08);
+  --shadow-card: 0 10px 30px rgba(15, 23, 42, 0.07);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  color: var(--foreground);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(245, 247, 251, 0.9) 42%, #eef2f7 100%);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  text-rendering: geometricPrecision;
+  min-height: 100vh;
+}
+
+button, input, select, textarea {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: rgba(10, 132, 255, 0.18);
+  color: #0f172a;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+*::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+@keyframes shell-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes hud-scan {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  14% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(420%);
+    opacity: 0;
+  }
+}
+
+@keyframes core-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.26), 0 0 30px rgba(34, 211, 238, 0.34);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(34, 211, 238, 0), 0 0 46px rgba(34, 211, 238, 0.62);
+  }
+}
+
+@keyframes orb-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.app-page {
+  animation: shell-enter 180ms ease-out both;
+}
+
+.motion-pop {
+  animation: pop-in 140ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .apple-surface {
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.72);
+    box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(24px) saturate(180%);
+  }
+
+  .premium-panel {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.86));
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .hairline {
+    border-color: rgba(15, 23, 42, 0.08);
+  }
+
+  .soft-focus-ring {
+    outline: none;
+  }
+
+  .soft-focus-ring:focus-visible {
+    box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.18);
+  }
+
+  .liquid-button {
+    background: linear-gradient(180deg, #1f2937, #050505);
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  }
+
+  .liquid-button:hover {
+    background: linear-gradient(180deg, #374151, #0f172a);
+  }
+
+  .jarvis-panel {
+    position: relative;
+  }
+
+  .jarvis-panel::before {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(rgba(34, 211, 238, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(34, 211, 238, 0.06) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.75), transparent 72%);
+  }
+
+  .jarvis-panel::after {
+    animation: hud-scan 4.2s linear infinite;
+    background: linear-gradient(180deg, transparent, rgba(103, 232, 249, 0.22), transparent);
+    content: "";
+    height: 90px;
+    left: 0;
+    pointer-events: none;
+    position: absolute;
+    right: 0;
+    top: 0;
+  }
+
+  .jarvis-core {
+    background:
+      radial-gradient(circle at 50% 50%, rgba(236, 254, 255, 0.96), rgba(34, 211, 238, 0.72) 34%, rgba(8, 47, 73, 0.88) 68%),
+      #0f172a;
+    border: 1px solid rgba(165, 243, 252, 0.52);
+    box-shadow: 0 0 30px rgba(34, 211, 238, 0.34), inset 0 0 20px rgba(255, 255, 255, 0.18);
+  }
+
+  .jarvis-core.is-listening {
+    animation: core-pulse 1.25s ease-in-out infinite;
+  }
+
+  .jarvis-launcher::before {
+    animation: orb-rotate 6s linear infinite;
+    background: conic-gradient(from 90deg, transparent, rgba(34, 211, 238, 0.5), transparent, rgba(59, 130, 246, 0.42), transparent);
+    content: "";
+    height: 160%;
+    left: -30%;
+    opacity: 0.75;
+    position: absolute;
+    top: -30%;
+    width: 160%;
+  }
+
+  .jarvis-launcher > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .jarvis-orb {
+    background:
+      radial-gradient(circle at 50% 50%, rgba(236, 254, 255, 0.95), rgba(34, 211, 238, 0.8) 40%, rgba(14, 116, 144, 0.86) 72%);
+    box-shadow: 0 0 28px rgba(34, 211, 238, 0.52), inset 0 0 16px rgba(255, 255, 255, 0.22);
+  }
+}
+
+.ag-theme-alpine.apple-grid {
+  --ag-font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ag-border-color: rgba(15, 23, 42, 0.08);
+  --ag-header-background-color: rgba(248, 250, 252, 0.92);
+  --ag-odd-row-background-color: rgba(248, 250, 252, 0.45);
+  --ag-row-hover-color: rgba(10, 132, 255, 0.08);
+  --ag-selected-row-background-color: rgba(10, 132, 255, 0.12);
+  --ag-wrapper-border-radius: 14px;
+}

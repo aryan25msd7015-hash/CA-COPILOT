@@ -1,0 +1,57 @@
+
+> frontend@0.1.0 dev
+> next dev
+
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3000
+
+ ✓ Starting...
+ ✓ Ready in 2.9s
+ ○ Compiling /login ...
+ ✓ Compiled /login in 5.8s (804 modules)
+ GET /login 200 in 6275ms
+ ✓ Compiled in 505ms (357 modules)
+ GET /login 200 in 438ms
+ GET /login 200 in 57ms
+ GET /login 200 in 74ms
+ GET /login 200 in 44ms
+ GET /login 200 in 75ms
+ GET /login 200 in 59ms
+ GET /login 200 in 46ms
+ GET /login 200 in 46ms
+ GET /login 200 in 54ms
+ GET /login 200 in 74ms
+ GET /login 200 in 90ms
+ GET /login 200 in 242ms
+ GET /login 200 in 63ms
+ GET /login 200 in 54ms
+ GET /login 200 in 312ms
+ GET /login 200 in 70ms
+ GET /login 200 in 67ms
+ GET /login 200 in 288ms
+ GET /login 200 in 206ms
+ GET /login 200 in 62ms
+ GET /login 200 in 81ms
+ GET /login 200 in 61ms
+ GET /login 200 in 293ms
+ GET /login 200 in 63ms
+ GET /login 200 in 45ms
+ GET /login 200 in 73ms
+ GET /login 200 in 76ms
+ GET /login 200 in 61ms
+ GET /login 200 in 47ms
+ GET /login 200 in 70ms
+ GET /login 200 in 86ms
+ GET /login 200 in 125ms
+ GET /login 200 in 92ms
+ GET /login 200 in 74ms
+ GET /login 200 in 72ms
+ GET /login 200 in 52ms
+ GET /login 200 in 63ms
+ ○ Compiling / ...
+ ✓ Compiled / in 12.9s (980 modules)
+ GET /login 200 in 5066ms
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 751ms (563 modules)
+ GET /favicon.ico 200 in 1054ms
+ GET /login 200 in 114ms

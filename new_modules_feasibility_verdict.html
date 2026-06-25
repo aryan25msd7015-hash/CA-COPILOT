@@ -1,0 +1,110 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+.card{border-radius:10px;border:0.5px solid var(--color-border-tertiary);padding:13px 15px;background:var(--color-background-secondary)}
+.ct{font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:3px}
+.cs{font-size:10px;color:var(--color-text-secondary);line-height:1.55;margin-bottom:8px}
+.rows{display:flex;flex-direction:column;gap:4px}
+.row{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--color-text-tertiary)}
+.lbl{width:60px;text-align:right;flex-shrink:0}
+.tr{flex:1;height:4px;background:var(--color-border-tertiary);border-radius:2px;overflow:hidden}
+.tf{height:100%;border-radius:2px}
+.tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
+.tag{font-size:9px;padding:2px 7px;border-radius:3px;font-weight:500}
+.tg{background:var(--color-background-success);color:var(--color-text-success)}
+.tb{background:var(--color-background-info);color:var(--color-text-info)}
+.ta{background:var(--color-background-warning);color:var(--color-text-warning)}
+.tr2{background:var(--color-background-danger);color:var(--color-text-danger)}
+.verdict{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.vbadge{font-size:9px;font-weight:500;padding:2px 8px;border-radius:10px}
+.cal-card{border-radius:10px;border:1.5px solid var(--color-border-success);padding:14px;background:var(--color-background-success);margin-bottom:0}
+.cal-title{font-size:13px;font-weight:500;color:var(--color-text-success);margin-bottom:4px}
+.cal-desc{font-size:11px;color:var(--color-text-success);line-height:1.6}
+</style>
+
+<p style="font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:10px">All 7 automations — feasibility verdict</p>
+
+<div class="grid">
+  <div class="card">
+    <div class="verdict"><span class="vbadge tg">✓ Build it — Phase 2 add-on</span></div>
+    <div class="ct">1. MSME Payment Audit (Sec 43B(h))</div>
+    <div class="cs">OCR Udyam certs → tag suppliers → flag 45-day violations → auto-compute disallowance. Pure rule engine after tagging. Very high ROI for corporate clients.</div>
+    <div class="rows">
+      <div class="row"><span class="lbl">Feasibility</span><div class="tr"><div class="tf" style="width:92%;background:#16a34a"></div></div><span>92%</span></div>
+      <div class="row"><span class="lbl">CA value</span><div class="tr"><div class="tf" style="width:94%;background:#7c3aed"></div></div><span>94%</span></div>
+      <div class="row"><span class="lbl">Effort</span><div class="tr"><div class="tf" style="width:35%;background:#d97706"></div></div><span>low</span></div>
+    </div>
+    <div class="tags"><span class="tag tg">OCR</span><span class="tag tb">Rule engine</span><span class="tag tb">Ledger matching</span></div>
+  </div>
+  <div class="card">
+    <div class="verdict"><span class="vbadge tg">✓ Build it — Phase 2 add-on</span></div>
+    <div class="ct">2. Drawing Power & Stock Statement</div>
+    <div class="cs">Read inventory ledger → flag slow-moving SKUs → isolate 90-day debtors → apply bank margin formula → generate monthly DP statement. Huge time save per client.</div>
+    <div class="rows">
+      <div class="row"><span class="lbl">Feasibility</span><div class="tr"><div class="tf" style="width:85%;background:#16a34a"></div></div><span>85%</span></div>
+      <div class="row"><span class="lbl">CA value</span><div class="tr"><div class="tf" style="width:90%;background:#7c3aed"></div></div><span>90%</span></div>
+      <div class="row"><span class="lbl">Effort</span><div class="tr"><div class="tf" style="width:55%;background:#d97706"></div></div><span>medium</span></div>
+    </div>
+    <div class="tags"><span class="tag tb">Tabular ML</span><span class="tag tb">ERP connector</span><span class="tag tg">Rule engine</span></div>
+  </div>
+  <div class="card">
+    <div class="verdict"><span class="vbadge tg">✓ Build it — Phase 3</span></div>
+    <div class="ct">3. MCA Board Minutes & Secretarial Docs</div>
+    <div class="cs">Voice/email transcript → LLM with Pydantic schema → formal board minutes, AGM notices, MGT-14/AOC-4/MGT-7 auto-fill. Pure LLM engineering — no custom ML needed.</div>
+    <div class="rows">
+      <div class="row"><span class="lbl">Feasibility</span><div class="tr"><div class="tf" style="width:88%;background:#16a34a"></div></div><span>88%</span></div>
+      <div class="row"><span class="lbl">CA value</span><div class="tr"><div class="tf" style="width:86%;background:#7c3aed"></div></div><span>86%</span></div>
+      <div class="row"><span class="lbl">Effort</span><div class="tr"><div class="tf" style="width:45%;background:#d97706"></div></div><span>medium</span></div>
+    </div>
+    <div class="tags"><span class="tag tb">LLM</span><span class="tag tb">Pydantic schema</span><span class="tag tg">Template fill</span></div>
+  </div>
+  <div class="card">
+    <div class="verdict"><span class="vbadge tg">✓ Build it — Phase 2 add-on</span></div>
+    <div class="ct">4. CA Certificate Auto-Generator</div>
+    <div class="cs">Upload balance sheets + ITR → extract net worth/turnover → validate across filing DB → generate signed-ready certificate in ICAI format. Very high request volume from clients.</div>
+    <div class="rows">
+      <div class="row"><span class="lbl">Feasibility</span><div class="tr"><div class="tf" style="width:90%;background:#16a34a"></div></div><span>90%</span></div>
+      <div class="row"><span class="lbl">CA value</span><div class="tr"><div class="tf" style="width:88%;background:#7c3aed"></div></div><span>88%</span></div>
+      <div class="row"><span class="lbl">Effort</span><div class="tr"><div class="tf" style="width:30%;background:#d97706"></div></div><span>low</span></div>
+    </div>
+    <div class="tags"><span class="tag tb">OCR</span><span class="tag tg">Template engine</span><span class="tag tg">Validation API</span></div>
+  </div>
+  <div class="card">
+    <div class="verdict"><span class="vbadge ta">⚠ Build carefully — Phase 3</span></div>
+    <div class="ct">5. Lease Intelligence (Ind AS 116)</div>
+    <div class="cs">NER on lease PDFs → extract dates, escalation clauses, rent-free periods → compute ROU asset + lease liability schedule. Complex contracts need strong legal NER fine-tuning.</div>
+    <div class="rows">
+      <div class="row"><span class="lbl">Feasibility</span><div class="tr"><div class="tf" style="width:72%;background:#d97706"></div></div><span>72%</span></div>
+      <div class="row"><span class="lbl">CA value</span><div class="tr"><div class="tf" style="width:85%;background:#7c3aed"></div></div><span>85%</span></div>
+      <div class="row"><span class="lbl">Effort</span><div class="tr"><div class="tf" style="width:78%;background:#dc2626"></div></div><span>high</span></div>
+    </div>
+    <div class="tags"><span class="tag tb">NER</span><span class="tag tb">Long-context RAG</span><span class="tag ta">Legal PDF parsing</span></div>
+  </div>
+  <div class="card">
+    <div class="verdict"><span class="vbadge tg">✓ Build it — Phase 2 (internal)</span></div>
+    <div class="ct">6. Article Clerk Timesheet Auditing</div>
+    <div class="cs">Classify tasks from upload timestamps + doc logs → flag unbillable hours → compute true client-level margin. Internal tool — no client data dependency. Fast to build.</div>
+    <div class="rows">
+      <div class="row"><span class="lbl">Feasibility</span><div class="tr"><div class="tf" style="width:88%;background:#16a34a"></div></div><span>88%</span></div>
+      <div class="row"><span class="lbl">CA value</span><div class="tr"><div class="tf" style="width:78%;background:#7c3aed"></div></div><span>78%</span></div>
+      <div class="row"><span class="lbl">Effort</span><div class="tr"><div class="tf" style="width:32%;background:#d97706"></div></div><span>low</span></div>
+    </div>
+    <div class="tags"><span class="tag tb">Classification</span><span class="tag tb">Clustering</span><span class="tag tg">Internal tool</span></div>
+  </div>
+  <div class="card" style="grid-column:span 2">
+    <div class="verdict"><span class="vbadge tg">✓ Build it — Phase 3</span></div>
+    <div class="ct">7. Audit Bid & RFP Auto-Generator</div>
+    <div class="cs">Ingest 200-page RFP → check against firm's credential DB (partners, experience, turnover) → auto-generate customized technical bid proposal. Premium feature — huge time save on high-value engagements. Firm's credential DB = one-time setup, then reusable forever.</div>
+    <div class="rows" style="flex-direction:row;gap:16px">
+      <div class="row"><span class="lbl">Feasibility</span><div class="tr" style="width:120px"><div class="tf" style="width:82%;background:#16a34a"></div></div><span>82%</span></div>
+      <div class="row"><span class="lbl">CA value</span><div class="tr" style="width:120px"><div class="tf" style="width:84%;background:#7c3aed"></div></div><span>84%</span></div>
+    </div>
+    <div class="tags"><span class="tag tb">Multi-doc RAG</span><span class="tag tb">Agentic LLM</span><span class="tag tg">Credential DB</span></div>
+  </div>
+</div>
+
+<div class="cal-card">
+  <div class="cal-title">Advanced Compliance Calendar — the upgrade you asked for</div>
+  <div class="cal-desc">Instead of "GSTR-3B due 20 Nov" — it shows: which 8 of your 40 clients are at risk of missing it, which 3 haven't sent data yet, which 2 have a history of late filing, and which 1 already has an open notice for the same period. Client-aware, data-aware, risk-aware. Full build guide in the next widget.</div>
+</div>

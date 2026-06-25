@@ -1,0 +1,11 @@
+﻿{
+    "generated_at":  "2026-06-24",
+    "suite":  "backend pytest",
+    "tests":  51,
+    "passed":  51,
+    "failed":  0,
+    "warnings":  4,
+    "fixed":  "invoice_fraud_scanner tolerates missing fraud_review_status on minimal transaction objects",
+    "frontend_login_status":  200,
+    "demo_login":  true
+}

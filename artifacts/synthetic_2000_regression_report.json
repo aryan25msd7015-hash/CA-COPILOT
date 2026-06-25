@@ -1,0 +1,80 @@
+{
+  "generated_at": "2026-06-24",
+  "seed": 240624,
+  "companies": 2000,
+  "elapsed_seconds": 0.61,
+  "summary": {
+    "auth_org_client_payloads": {
+      "cases": 2000,
+      "passed": 2000,
+      "failed": 0
+    },
+    "deadlines_risk_scoring": {
+      "cases": 2000,
+      "passed": 2000,
+      "failed": 0
+    },
+    "msme_43bh": {
+      "cases": 2000,
+      "passed": 2000,
+      "failed": 0
+    },
+    "msme_udyam_parse": {
+      "cases": 2000,
+      "passed": 2000,
+      "failed": 0
+    },
+    "drawing_power": {
+      "cases": 2000,
+      "passed": 2000,
+      "failed": 0
+    },
+    "certificates": {
+      "cases": 2000,
+      "passed": 2000,
+      "failed": 0
+    },
+    "secretarial_documents": {
+      "cases": 2000,
+      "passed": 2000,
+      "failed": 0
+    },
+    "leases": {
+      "cases": 2000,
+      "passed": 2000,
+      "failed": 0
+    },
+    "rfp_bids": {
+      "cases": 2000,
+      "passed": 2000,
+      "failed": 0
+    },
+    "timesheets_profitability": {
+      "cases": 2000,
+      "passed": 2000,
+      "failed": 0
+    },
+    "benchmarking": {
+      "cases": 2000,
+      "passed": 2000,
+      "failed": 0
+    },
+    "autopilot_exceptions": {
+      "cases": 2000,
+      "passed": 2000,
+      "failed": 0
+    },
+    "whatsapp_notices_documents": {
+      "cases": 2000,
+      "passed": 2000,
+      "failed": 0
+    }
+  },
+  "edge_cases": [],
+  "edge_case_count": 0,
+  "overall": {
+    "cases": 26000,
+    "passed": 26000,
+    "failed": 0
+  }
+}

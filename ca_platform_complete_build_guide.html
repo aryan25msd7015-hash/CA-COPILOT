@@ -1,0 +1,966 @@
+
+<h2 class="sr-only">Complete step-by-step build guide for all 9 CA Intelligence Platform modules including WhatsApp pipeline, with code, architecture, do's and don'ts for each phase</h2>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{display:grid;grid-template-columns:188px 1fr;min-height:700px;font-size:13px}
+.sb{border-right:0.5px solid var(--color-border-tertiary);padding:8px 0;overflow-y:auto;max-height:700px}
+.pb{display:flex;flex-direction:column;gap:1px}
+.pb-section{padding:8px 12px 4px;font-size:9px;font-weight:500;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.07em;border-top:0.5px solid var(--color-border-tertiary);margin-top:4px}
+.pb-section:first-child{border-top:none;margin-top:0}
+.pbtn{width:100%;text-align:left;padding:7px 12px;font-size:11px;font-weight:500;color:var(--color-text-secondary);background:none;border:none;border-left:2px solid transparent;cursor:pointer;line-height:1.3;transition:all .12s}
+.pbtn span{display:block;font-size:9px;font-weight:400;color:var(--color-text-tertiary);margin-top:1px}
+.pbtn:hover{background:var(--color-background-secondary);color:var(--color-text-primary)}
+.pbtn.on{color:var(--color-text-info);border-left-color:var(--color-border-info);background:var(--color-background-info)}
+.main{padding:20px 22px;overflow-y:auto;max-height:700px}
+.panel{display:none}
+.panel.on{display:block}
+.ptitle{font-size:15px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px}
+.pdesc{font-size:12px;color:var(--color-text-secondary);line-height:1.65;margin-bottom:14px}
+.step{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:10px;padding:13px 15px;margin-bottom:11px}
+.snum{font-size:9px;font-weight:500;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.stitle{font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:5px}
+.sbody{font-size:11px;color:var(--color-text-secondary);line-height:1.7;margin-bottom:7px}
+.code{font-family:var(--font-mono);font-size:10px;background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:6px;padding:9px 11px;margin:6px 0;white-space:pre;overflow-x:auto;color:var(--color-text-primary);line-height:1.55}
+.tags{display:flex;flex-wrap:wrap;gap:4px;margin:5px 0}
+.tag{font-size:9px;padding:2px 7px;border-radius:3px;font-weight:500}
+.tg{background:var(--color-background-success);color:var(--color-text-success)}
+.tr{background:var(--color-background-danger);color:var(--color-text-danger)}
+.tb{background:var(--color-background-info);color:var(--color-text-info)}
+.ta{background:var(--color-background-warning);color:var(--color-text-warning)}
+.dd{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.ddc{padding:10px 12px;border-radius:6px;border:0.5px solid var(--color-border-tertiary)}
+.ddc h4{font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.ddc ul{padding-left:12px;font-size:10px;color:var(--color-text-secondary);line-height:1.85}
+.ms{margin-top:12px;padding:10px 13px;border-radius:6px;background:var(--color-background-success);border:0.5px solid var(--color-border-success)}
+.ms h4{font-size:9px;font-weight:500;color:var(--color-text-success);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.ms ul{padding-left:13px;font-size:10px;color:var(--color-text-success);line-height:1.9}
+.wa{background:var(--color-background-primary);border:1.5px solid var(--color-border-success);border-radius:8px;padding:12px 14px;margin:10px 0}
+.wa-h{font-size:11px;font-weight:500;color:var(--color-text-success);margin-bottom:8px}
+.wa-flow{display:flex;flex-direction:column;gap:6px}
+.wm{padding:7px 10px;border-radius:7px;font-size:10px;line-height:1.55;max-width:86%}
+.wm-o{background:#dcf8c6;color:#1a3a1a;margin-left:auto}
+.wm-i{background:var(--color-background-secondary);color:var(--color-text-primary);border:0.5px solid var(--color-border-tertiary)}
+.wm-s{background:var(--color-background-info);color:var(--color-text-info);max-width:100%;font-size:9px;text-align:center;border-radius:3px}
+.pbar{height:2px;background:var(--color-border-tertiary);border-radius:1px;margin-bottom:14px}
+.pbar-f{height:100%;background:var(--color-border-info);border-radius:1px;transition:width .3s}
+.nav{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:10px;border-top:0.5px solid var(--color-border-tertiary)}
+.nav span{font-size:10px;color:var(--color-text-tertiary)}
+</style>
+
+<div class="wrap">
+<div class="sb">
+<div class="pb">
+  <div class="pb-section">Foundation</div>
+  <button class="pbtn on" onclick="go(0)">Prerequisites<span>Accounts & tools</span></button>
+  <button class="pbtn" onclick="go(1)">Infrastructure<span>DB & backend setup</span></button>
+  <div class="pb-section">Data pipeline</div>
+  <button class="pbtn" onclick="go(2)">Ingestion & OCR<span>Documents → structured data</span></button>
+  <button class="pbtn" onclick="go(3)">WhatsApp pipeline<span>Auto reminders & intake</span></button>
+  <div class="pb-section">Core modules</div>
+  <button class="pbtn" onclick="go(4)">GST reconciliation<span>3-tier matching engine</span></button>
+  <button class="pbtn" onclick="go(5)">Deadline engine<span>Smart compliance calendar</span></button>
+  <div class="pb-section">AI modules</div>
+  <button class="pbtn" onclick="go(6)">Notice RAG drafter<span>Tax notice analyzer</span></button>
+  <button class="pbtn" onclick="go(7)">Client health score<span>0–100 composite score</span></button>
+  <button class="pbtn" onclick="go(8)">Audit working papers<span>ICAI-format AI drafting</span></button>
+  <div class="pb-section">Advanced AI</div>
+  <button class="pbtn" onclick="go(9)">Anomaly detection<span>Fraud & risk scoring</span></button>
+  <button class="pbtn" onclick="go(10)">Invoice fraud scanner<span>OCR + ML on invoices</span></button>
+  <button class="pbtn" onclick="go(11)">NL query engine<span>Ask questions in English</span></button>
+  <button class="pbtn" onclick="go(12)">Benchmarking<span>Cross-client analytics</span></button>
+  <div class="pb-section">Launch</div>
+  <button class="pbtn" onclick="go(13)">Frontend & ERP<span>Dashboard & connectors</span></button>
+  <button class="pbtn" onclick="go(14)">Security & beta<span>Hardening & go-live</span></button>
+</div>
+</div>
+
+<div class="main">
+<div class="pbar"><div class="pbar-f" id="pf" style="width:6%"></div></div>
+
+<div class="panel on" id="ph0">
+<p class="ptitle">Phase 0 — Prerequisites & accounts</p>
+<p class="pdesc">Before writing code, get every account, API key, and local tool in place. Skipping this step delays every phase that follows.</p>
+<div class="step"><div class="snum">Step 1</div><div class="stitle">Cloud account — AWS Mumbai</div><div class="sbody">Create AWS account. Set default region to ap-south-1 (Mumbai) immediately — Indian data residency under DPDP Act 2023 requires this. Enable MFA on root account. Create an IAM user with programmatic access for your app — never use root credentials in code.</div><div class="code">aws configure
+# AWS Access Key ID: your_key
+# Default region: ap-south-1
+# Output format: json</div></div>
+<div class="step"><div class="snum">Step 2</div><div class="stitle">OCR — Azure Document Intelligence</div><div class="sbody">Sign up for Azure. Create a Document Intelligence resource in Central India region. Grab endpoint + subscription key. This handles GST invoices, tax notices, and bank statements far better than Tesseract.</div><div class="code">AZURE_DOC_ENDPOINT=https://your-resource.cognitiveservices.azure.com/
+AZURE_DOC_KEY=your_32_char_key_here
+# Store in AWS Secrets Manager — never in .env committed to Git</div></div>
+<div class="step"><div class="snum">Step 3</div><div class="stitle">WhatsApp Business API — Meta + Twilio</div><div class="sbody">Meta: Go to developers.facebook.com → create Business App → add WhatsApp product → verify Facebook Business Manager. This takes 2–5 days. In parallel, sign up for Twilio and use their WhatsApp Sandbox for dev/testing while waiting for Meta approval.</div><div class="tags"><span class="tg">Meta: production</span><span class="ta">Twilio sandbox: dev/testing</span><span class="tb">Approval: 2–5 days</span></div></div>
+<div class="step"><div class="snum">Step 4</div><div class="stitle">LLM API keys</div><div class="sbody">Get Anthropic API key (claude-sonnet-4-20250514 — best for Indian legal reasoning and financial analysis). Get OpenAI key as fallback. Store both in AWS Secrets Manager from day one.</div><div class="code">aws secretsmanager create-secret \
+  --name prod/ca-platform/llm \
+  --region ap-south-1 \
+  --secret-string '{"anthropic":"sk-ant-...","openai":"sk-..."}'</div></div>
+<div class="step"><div class="snum">Step 5</div><div class="stitle">Local dev environment</div><div class="sbody">Install Python 3.11+, Node.js 20+, Docker Desktop. Run PostgreSQL 16 and Redis locally via Docker — no local installs needed.</div><div class="code">docker run -d -p 5432:5432 \
+  -e POSTGRES_PASSWORD=devpass \
+  -e POSTGRES_DB=ca_platform postgres:16
+
+docker run -d -p 6379:6379 redis:7-alpine
+
+pip install fastapi uvicorn sqlalchemy psycopg2-binary \
+  celery redis langchain anthropic openai rapidfuzz \
+  scikit-learn pandas python-multipart boto3</div></div>
+<div class="dd">
+  <div class="ddc" style="border-color:var(--color-border-success)"><h4 style="color:var(--color-text-success)">Do</h4><ul><li>Use ap-south-1 from day one</li><li>Store all secrets in AWS Secrets Manager</li><li>Use Docker for local Postgres + Redis</li><li>Apply for Meta WhatsApp approval early</li></ul></div>
+  <div class="ddc" style="border-color:var(--color-border-danger)"><h4 style="color:var(--color-text-danger)">Don't</h4><ul><li>Commit API keys to Git ever</li><li>Use personal WhatsApp for testing</li><li>Skip MFA setup on AWS root</li></ul></div>
+</div>
+</div>
+
+<div class="panel" id="ph1">
+<p class="ptitle">Phase 1 — Infrastructure & database (weeks 1–2)</p>
+<p class="pdesc">Build the multi-tenant data foundation. Every table gets an org_id. Get this architecture wrong and you'll rewrite it under production load.</p>
+<div class="step"><div class="snum">Step 1</div><div class="stitle">Provision RDS PostgreSQL 16 + extensions</div><div class="sbody">Launch RDS PostgreSQL 16 in ap-south-1. Enable automated backups (7-day). Use db.t3.medium for dev, db.r6g.large for prod. Connect and immediately enable three extensions.</div><div class="code">-- Run after first connection
+CREATE EXTENSION IF NOT EXISTS vector;      -- for RAG embeddings
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp"; -- for UUID PKs
+CREATE EXTENSION IF NOT EXISTS pg_trgm;     -- for fuzzy matching</div></div>
+<div class="step"><div class="snum">Step 2</div><div class="stitle">Core multi-tenant schema</div><div class="sbody">Every single table must include org_id as a foreign key. This is the most critical architectural decision in the entire project — it is what prevents firm A from ever seeing firm B's data.</div><div class="code">CREATE TABLE organizations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL, plan TEXT DEFAULT 'starter',
+  gstin TEXT, created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE clients (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+  name TEXT NOT NULL, gstin TEXT,
+  whatsapp_number TEXT, whatsapp_consent_at TIMESTAMPTZ,
+  email TEXT, health_score INT DEFAULT 100,
+  industry TEXT, -- needed for benchmarking
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+  email TEXT UNIQUE NOT NULL,
+  role TEXT CHECK (role IN ('partner','manager','article')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);</div></div>
+<div class="step"><div class="snum">Step 3</div><div class="stitle">Documents & transactions tables</div><div class="code">CREATE TABLE documents (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  org_id UUID REFERENCES organizations(id),
+  client_id UUID REFERENCES clients(id),
+  doc_type TEXT, -- invoice,gstr2b,purchase_register,notice,trial_balance,bank_statement
+  s3_key TEXT NOT NULL, ocr_text TEXT, ocr_json JSONB,
+  source TEXT DEFAULT 'upload', -- 'upload' or 'whatsapp'
+  status TEXT DEFAULT 'pending',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE transactions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  org_id UUID REFERENCES organizations(id),
+  client_id UUID REFERENCES clients(id),
+  document_id UUID REFERENCES documents(id),
+  invoice_no TEXT, vendor_gstin TEXT, vendor_name TEXT,
+  amount NUMERIC(15,2), tax_amount NUMERIC(15,2), date DATE,
+  match_status TEXT DEFAULT 'unmatched',
+  match_confidence NUMERIC(5,2), anomaly_score NUMERIC(5,4),
+  source TEXT DEFAULT 'upload',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE legal_chunks (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  doc_type TEXT, -- income_tax_act, gst_act, circular, reply_template
+  content TEXT, embedding vector(1536),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);</div></div>
+<div class="step"><div class="snum">Step 4</div><div class="stitle">FastAPI + tenant middleware</div><div class="sbody">The tenant middleware injects org_id into every request automatically. Every DB query must go through the scoped helper — never query a table without the org_id filter.</div><div class="code"># middleware/tenant.py
+async def tenant_middleware(request: Request, call_next):
+    token = request.headers.get("Authorization","").replace("Bearer ","")
+    payload = verify_jwt(token)
+    request.state.org_id = payload["org_id"]
+    request.state.role   = payload["role"]
+    return await call_next(request)
+
+# ALWAYS use this — never query without org_id:
+def scoped(db, Model, req: Request):
+    return db.query(Model).filter(
+        Model.org_id == req.state.org_id)</div></div>
+<div class="step"><div class="snum">Step 5</div><div class="stitle">Celery + Redis async task system</div><div class="code"># celery_app.py
+from celery import Celery
+app = Celery('ca_platform', broker='redis://localhost:6379/0',
+             backend='redis://localhost:6379/1')
+app.conf.task_routes = {
+  'tasks.whatsapp.*':      {'queue': 'whatsapp'},
+  'tasks.ocr.*':           {'queue': 'ocr'},
+  'tasks.reconciliation.*':{'queue': 'heavy'},
+  'tasks.llm.*':           {'queue': 'llm'},
+}</div></div>
+<div class="ms"><h4>Phase 1 milestone</h4><ul><li>PostgreSQL running in ap-south-1 with all 3 extensions</li><li>All tables created, every table has org_id FK</li><li>FastAPI boots, JWT auth + tenant middleware working</li><li>Celery workers start, consume from 4 separate queues</li></ul></div>
+</div>
+
+<div class="panel" id="ph2">
+<p class="ptitle">Phase 2 — Document ingestion & OCR (weeks 3–4)</p>
+<p class="pdesc">Transform PDFs, scanned images, and CSV exports into clean structured data. Every other module depends on the quality of this pipeline.</p>
+<div class="step"><div class="snum">Step 1</div><div class="stitle">S3 pre-signed upload — never stream through FastAPI</div><div class="code">@router.post("/documents/upload-url")
+async def get_upload_url(doc_type: str, client_id: str, req: Request):
+    key = f"{req.state.org_id}/{client_id}/{uuid4()}.pdf"
+    url = s3.generate_presigned_url('put_object',
+        Params={'Bucket': BUCKET, 'Key': key,
+                'ContentType':'application/pdf'}, ExpiresIn=300)
+    doc = Document(org_id=req.state.org_id,
+                   client_id=client_id, s3_key=key, doc_type=doc_type)
+    db.add(doc); db.commit()
+    return {"upload_url": url, "document_id": str(doc.id)}</div></div>
+<div class="step"><div class="snum">Step 2</div><div class="stitle">Azure OCR Celery task</div><div class="code">@celery_app.task(queue='ocr')
+def run_ocr(document_id: str):
+    doc = db.query(Document).get(document_id)
+    client = DocumentAnalysisClient(AZURE_ENDPOINT,
+                 AzureKeyCredential(AZURE_KEY))
+    poller = client.begin_analyze_document_from_url(
+        "prebuilt-invoice", get_s3_url(doc.s3_key))
+    result = poller.result()
+    doc.ocr_text = mask_pii(result.content)
+    doc.ocr_json = {"tables": extract_tables(result),
+                    "kvs":    extract_key_values(result)}
+    doc.status = "ocr_complete"
+    db.commit()
+    # Route to appropriate extraction task
+    route_doc.delay(document_id)</div></div>
+<div class="step"><div class="snum">Step 3</div><div class="stitle">PII masking — runs before any DB write or LLM call</div><div class="code">import re, hashlib
+PAN_RE     = re.compile(r'[A-Z]{5}[0-9]{4}[A-Z]')
+AADHAAR_RE = re.compile(r'\d{4}\s?\d{4}\s?\d{4}')
+BANK_RE    = re.compile(r'(?<!\d)\d{9,18}(?!\d)')
+
+def mask_pii(text: str) -> str:
+    def _hash(m):
+        h = hashlib.sha256(m.group().encode()).hexdigest()[:8]
+        return f"[MASKED-{h}]"
+    text = PAN_RE.sub(_hash, text)
+    text = AADHAAR_RE.sub(_hash, text)
+    # GSTIN is public business data — do NOT mask it
+    return text</div></div>
+<div class="step"><div class="snum">Step 4</div><div class="stitle">Tally CSV normalizer (most important ERP connector)</div><div class="code">TALLY_MAP = {
+  # Tally Prime headers
+  "Voucher No":"invoice_no","Date":"date","Party Name":"vendor_name",
+  "Amount":"amount","GSTIN/UIN of Party":"vendor_gstin",
+  # Tally ERP 9 headers (older)
+  "Vch No.":"invoice_no","Particulars":"vendor_name","Debit":"amount"
+}
+def normalize_tally(df):
+    df = df.rename(columns=TALLY_MAP)
+    df['date']    = pd.to_datetime(df['date'], dayfirst=True)
+    df['amount']  = pd.to_numeric(
+        df['amount'].astype(str).str.replace(',',''), errors='coerce')
+    df['vendor_name'] = (df['vendor_name'].str.upper().str.strip()
+        .str.replace(r'\b(PVT|LTD|PRIVATE|LIMITED|LLP)\b','',regex=True)
+        .str.strip())
+    return df.dropna(subset=['amount'])</div></div>
+<div class="dd">
+  <div class="ddc" style="border-color:var(--color-border-success)"><h4 style="color:var(--color-text-success)">Do</h4><ul><li>Pre-signed S3 URLs for all uploads</li><li>Mask PII before every DB write</li><li>Run OCR in Celery — never sync</li><li>Handle both Tally Prime & ERP 9</li></ul></div>
+  <div class="ddc" style="border-color:var(--color-border-danger)"><h4 style="color:var(--color-text-danger)">Don't</h4><ul><li>Use Tesseract for financial tables</li><li>Stream PDFs through FastAPI</li><li>Mask GSTIN — it's public business data</li><li>Assume Tally CSV headers are consistent</li></ul></div>
+</div>
+</div>
+
+<div class="panel" id="ph3">
+<p class="ptitle">Phase 3 — WhatsApp automation pipeline (weeks 3–4)</p>
+<p class="pdesc">The CA never chases a client for documents again. Automated reminders go out, files come back via WhatsApp, and they flow directly into the ingestion pipeline.</p>
+<div class="wa"><div class="wa-h">What the client actually sees on WhatsApp</div>
+<div class="wa-flow">
+  <div class="wm wm-s">System trigger: 7 days before GSTR-3B deadline, document not yet received</div>
+  <div class="wm wm-o">Hi Ramesh ji, your GSTR-3B for October is due on 20th Nov. Please send your Purchase Register and Bank Statement for October to this number.</div>
+  <div class="wm wm-i">📎 Purchase_Oct.xlsx</div>
+  <div class="wm wm-s">Auto-ingested → OCR → 47 transactions extracted → status updated</div>
+  <div class="wm wm-o">Received! Purchase Register for October processed (47 transactions). Please also send the Bank Statement when ready.</div>
+  <div class="wm wm-i">ok will send tomorrow</div>
+  <div class="wm wm-s">3 days later — bank statement still pending — automated follow-up fires</div>
+  <div class="wm wm-o">Reminder: Bank Statement for October is still pending. Filing deadline is in 4 days.</div>
+</div></div>
+<div class="step"><div class="snum">Step 1</div><div class="stitle">Create Meta-approved message templates</div><div class="sbody">You CANNOT send free-form outbound messages without a 24-hour reply window. All scheduled reminders must use pre-approved templates submitted to Meta Business Manager. Allow 24–48 hours for approval.</div><div class="code"># Template: data_request_reminder (submit to Meta)
+# Body: "Hi {{1}}, your {{2}} filing is due on {{3}}.
+# Please send your {{4}} to this number.
+# Reply STOP to unsubscribe."
+
+# Template: data_received_ack
+# Body: "Received! {{1}} for {{2}} processed ({{3}} records found).
+# {{4}}"  <- next required document or "All documents received."
+
+# Template: filing_deadline_urgent
+# Body: "Urgent: {{1}} filing deadline is {{2}} ({{3}} days away).
+# {{4}} is still pending. Please send immediately."</div></div>
+<div class="step"><div class="snum">Step 2</div><div class="stitle">Client opt-in consent system (legally required)</div><div class="sbody">Under Meta's policy and India's DPDP Act, every client must explicitly consent before you message them. Build a consent link the CA sends once per client. Store consent timestamp.</div><div class="code">@router.get("/consent/{token}")
+async def whatsapp_consent(token: str):
+    client_id = verify_consent_token(token)
+    client = db.query(Client).get(client_id)
+    client.whatsapp_consent_at = datetime.now()
+    db.commit()
+    return HTMLResponse("""
+    <h2>Done! Your CA's office will now send document
+    reminders to this WhatsApp number.</h2>
+    <p>Reply STOP at any time to unsubscribe.</p>""")</div></div>
+<div class="step"><div class="snum">Step 3</div><div class="stitle">Celery Beat — daily reminder scheduler</div><div class="code">@celery_app.task
+def morning_reminder_check():
+    """Runs daily at 9am via Celery Beat"""
+    deadlines = get_deadlines_within_days(7)
+    for dl in deadlines:
+        if not dl.client.whatsapp_consent_at:
+            continue  # no consent = no message
+        if check_doc_received(dl.client_id, dl.doc_type):
+            continue  # already have it
+        reminders = count_reminders(dl.client_id, dl.doc_type)
+        if reminders >= 3:
+            continue  # max 3 per filing cycle
+        days_left = (dl.deadline - date.today()).days
+        template  = pick_template(days_left)
+        # days 7 = data_request_reminder
+        # days 3 = data_request_reminder (followup)
+        # days 1 = filing_deadline_urgent
+        send_whatsapp_template.delay(
+            dl.client.whatsapp_number, template,
+            [dl.client.name, dl.filing_name,
+             dl.deadline.strftime('%d %b'), dl.doc_type])
+        log_reminder(dl.client_id, dl.doc_type)
+
+app.conf.beat_schedule = {
+  'morning-check': {
+    'task': 'tasks.whatsapp.morning_reminder_check',
+    'schedule': crontab(hour=9, minute=0)
+  }
+}</div></div>
+<div class="step"><div class="snum">Step 4</div><div class="stitle">Incoming webhook — receive files from clients</div><div class="sbody">Meta sends a POST to your webhook when a client replies. You MUST return HTTP 200 within 200ms or Meta retries. Return immediately, process via background task.</div><div class="code">@router.post("/webhook/whatsapp")
+async def wa_webhook(payload: dict, bg: BackgroundTasks):
+    bg.add_task(process_incoming_wa, payload)
+    return {"status": "ok"}  # Must return in <200ms
+
+async def process_incoming_wa(payload: dict):
+    msg = extract_message(payload)
+    if not msg: return
+    client = db.query(Client).filter(
+        Client.whatsapp_number == msg['from']).first()
+    if not client:
+        send_text(msg['from'], "Number not registered. Contact your CA.")
+        return
+    if msg['type'] == 'document':
+        file_bytes = download_media(msg['document']['id'])
+        s3_key = upload_to_s3(file_bytes,
+            f"{client.org_id}/{client.id}/{uuid4()}")
+        doc = Document(org_id=client.org_id, client_id=client.id,
+                       s3_key=s3_key, source='whatsapp',
+                       doc_type=detect_doc_type(msg['document']['filename']))
+        db.add(doc); db.commit()
+        run_ocr.delay(str(doc.id))
+        send_text(msg['from'],
+            f"Got it! {msg['document']['filename']} received and processing.")</div></div>
+<div class="dd">
+  <div class="ddc" style="border-color:var(--color-border-success)"><h4 style="color:var(--color-text-success)">Do</h4><ul><li>Return 200 from webhook instantly</li><li>Get client consent before any outbound message</li><li>Stop reminders the moment doc is received</li><li>Cap at 3 reminders per filing cycle</li><li>Handle STOP replies to unsubscribe</li></ul></div>
+  <div class="ddc" style="border-color:var(--color-border-danger)"><h4 style="color:var(--color-text-danger)">Don't</h4><ul><li>Process messages synchronously in webhook</li><li>Send outbound without Meta-approved templates</li><li>Use a personal WhatsApp number</li><li>Send reminders more than once per day</li></ul></div>
+</div>
+</div>
+
+<div class="panel" id="ph4">
+<p class="ptitle">Phase 4 — GST & ITC reconciliation engine (weeks 5–8)</p>
+<p class="pdesc">The anchor module — the one CAs will pay for on day one. A three-tier matching engine that handles real-world data messiness: vendor name typos, rounding errors, and date shifts.</p>
+<div class="step"><div class="snum">Step 1</div><div class="stitle">Data normalization — run before any matching</div><div class="code">def normalize(df):
+    df['invoice_no'] = (df['invoice_no'].astype(str).str.upper()
+        .str.replace(r'[^A-Z0-9/\-]','',regex=True))
+    df['vendor_name'] = (df['vendor_name'].str.upper().str.strip()
+        .str.replace(r'\b(PVT|LTD|PRIVATE|LIMITED|LLP)\b','',regex=True)
+        .str.replace(r'\s+',' ',regex=True).str.strip())
+    df['date']   = pd.to_datetime(df['date'], dayfirst=True)
+    df['amount'] = df['amount'].round(2)
+    return df</div></div>
+<div class="step"><div class="snum">Step 2</div><div class="stitle">Three-tier matching waterfall</div><div class="code">from rapidfuzz import fuzz
+
+def reconcile(purchase_df, gstr2b_df, config):
+    amt_tol  = config.get('amount_tolerance', 5)
+    day_tol  = config.get('date_tolerance',   3)
+    fuzz_thr = config.get('fuzzy_threshold',  85)
+    results, matched_p, matched_g = [], set(), set()
+
+    # TIER 1 — Exact match: GSTIN + invoice_no + amount
+    for _, p in purchase_df.iterrows():
+        match = gstr2b_df[
+            (gstr2b_df.vendor_gstin == p.vendor_gstin) &
+            (gstr2b_df.invoice_no   == p.invoice_no) &
+            (gstr2b_df.amount       == p.amount)]
+        if len(match):
+            results.append({**p, 'match_type':'exact',
+                             'confidence':100.0, 'g_id':match.iloc[0].id})
+            matched_p.add(p.id); matched_g.add(match.iloc[0].id)
+
+    # TIER 2 — Tolerance: amount ±₹5, date ±3 days
+    rem_p = purchase_df[~purchase_df.id.isin(matched_p)]
+    rem_g = gstr2b_df[~gstr2b_df.id.isin(matched_g)]
+    for _, p in rem_p.iterrows():
+        match = rem_g[
+            (rem_g.vendor_gstin == p.vendor_gstin) &
+            (abs(rem_g.amount - p.amount) <= amt_tol) &
+            (abs((rem_g.date - p.date).dt.days) <= day_tol)]
+        if len(match):
+            results.append({**p,'match_type':'tolerance','confidence':90.0})
+            matched_p.add(p.id); matched_g.add(match.iloc[0].id)
+
+    # TIER 3 — Fuzzy: Jaro-Winkler on vendor name
+    rem_p2 = purchase_df[~purchase_df.id.isin(matched_p)]
+    rem_g2 = gstr2b_df[~gstr2b_df.id.isin(matched_g)]
+    for _, p in rem_p2.iterrows():
+        best_score, best_g = 0, None
+        for _, g in rem_g2.iterrows():
+            s = fuzz.token_sort_ratio(p.vendor_name, g.vendor_name)
+            if s > best_score: best_score, best_g = s, g
+        if best_score >= fuzz_thr and abs(p.amount - best_g.amount) <= amt_tol:
+            results.append({**p,'match_type':'fuzzy',
+                             'confidence':float(best_score)})
+
+    unmatched = purchase_df[~purchase_df.id.isin(matched_p)]
+    return pd.DataFrame(results), unmatched</div></div>
+<div class="step"><div class="snum">Step 3</div><div class="stitle">Isolation Forest anomaly detector</div><div class="code">from sklearn.ensemble import IsolationForest
+
+def train_anomaly(client_id):
+    txns = get_historical(client_id, months=6)
+    stats = txns.groupby('vendor_gstin')['amount'].agg(
+        ['mean','std','count']).fillna(0)
+    model = IsolationForest(contamination=0.02, random_state=42)
+    model.fit(stats[['mean','std','count']])
+    return model, stats
+
+def anomaly_score(model, stats, vendor_gstin, amount):
+    s = stats[stats.index==vendor_gstin]
+    if s.empty: return 0.75  # new vendor = moderate risk
+    feat = s[['mean','std','count']].values
+    raw  = model.decision_function(feat)[0]
+    return round(max(0, min(1, 1-(raw+0.5))), 4)</div></div>
+<div class="step"><div class="snum">Step 4</div><div class="stitle">Configurable tolerance UI — CA sets own thresholds</div><div class="sbody">Give CAs a settings screen to adjust matching parameters per client. Some clients need strict matching; others have sloppy data entry. Store config in the DB.</div><div class="code">CREATE TABLE reconciliation_config (
+  client_id UUID REFERENCES clients(id) PRIMARY KEY,
+  amount_tolerance NUMERIC DEFAULT 5,
+  date_tolerance   INT     DEFAULT 3,
+  fuzzy_threshold  INT     DEFAULT 85
+);</div></div>
+<div class="ms"><h4>Phase 4 milestone</h4><ul><li>90%+ auto-match rate on clean Tally + GSTR-2B data</li><li>Anomaly scores visible on every transaction row</li><li>Configurable tolerance per client works</li><li>Excel mismatch report exports correctly</li></ul></div>
+</div>
+
+<div class="panel" id="ph5">
+<p class="ptitle">Phase 5 — Smart deadline engine (weeks 5–6)</p>
+<p class="pdesc">Not just a calendar — a behavioral prediction system that sends personalized reminders based on each client's actual filing history. Chronic late filers get 10-day alerts, not 3-day.</p>
+<div class="step"><div class="snum">Step 1</div><div class="stitle">Compliance deadline database</div><div class="code">CREATE TABLE compliance_deadlines (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  org_id UUID REFERENCES organizations(id),
+  client_id UUID REFERENCES clients(id),
+  filing_type TEXT, -- GSTR1, GSTR3B, TDS_24Q, ROC_AOC4, ADV_TAX
+  period TEXT,      -- '2024-10'
+  deadline DATE,
+  status TEXT DEFAULT 'pending', -- pending, filed, missed
+  filed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+-- Pre-populate standard deadlines for all active clients
+-- GSTR-1: 11th of next month
+-- GSTR-3B: 20th of next month
+-- TDS Q1: 31 July, Q2: 31 Oct, Q3: 31 Jan, Q4: 31 May</div></div>
+<div class="step"><div class="snum">Step 2</div><div class="stitle">Behavioral lateness predictor</div><div class="sbody">Look at a client's last 12 months of filing dates. Calculate their average days-late per filing type. Use this to personalize reminder lead time — don't treat every client the same.</div><div class="code">def compute_lead_time(client_id: str, filing_type: str) -> int:
+    history = db.query(ComplianceDeadline).filter(
+        ComplianceDeadline.client_id == client_id,
+        ComplianceDeadline.filing_type == filing_type,
+        ComplianceDeadline.status.in_(['filed','missed'])
+    ).order_by(ComplianceDeadline.deadline.desc()).limit(12).all()
+
+    if len(history) < 3:
+        return 7  # default: remind 7 days before
+
+    avg_days_late = sum(
+        max(0,(f.filed_at.date()-f.deadline).days if f.filed_at else 5)
+        for f in history) / len(history)
+
+    if avg_days_late >= 5:  return 12  # chronic late filer
+    if avg_days_late >= 2:  return 9   # sometimes late
+    return 5                            # usually on time</div></div>
+<div class="step"><div class="snum">Step 3</div><div class="stitle">Client health contribution from deadlines</div><div class="sbody">On-time filings add to the health score, missed deadlines subtract. This feeds into the Client Health Score module in Phase 7.</div><div class="code">def deadline_health_component(client_id: str) -> float:
+    """Returns 0.0 to 1.0 for the deadline component"""
+    last_12 = get_last_12_filings(client_id)
+    if not last_12: return 1.0
+    on_time = sum(1 for f in last_12
+                  if f.status=='filed' and
+                  f.filed_at and f.filed_at.date() <= f.deadline)
+    return round(on_time / len(last_12), 3)</div></div>
+<div class="step"><div class="snum">Step 4</div><div class="stitle">Dashboard compliance calendar view</div><div class="sbody">Build a compact table showing all clients × all upcoming deadlines in a grid. Green = filed, amber = reminder sent, red = overdue. The CA sees their entire practice's compliance status in one view.</div><div class="tags"><span class="tg">Filed on time</span><span class="ta">Reminder sent</span><span class="tr">Overdue</span><span class="tb">Pending — not due yet</span></div></div>
+</div>
+
+<div class="panel" id="ph6">
+<p class="ptitle">Phase 6 — Tax notice analyzer & RAG drafter (weeks 9–12)</p>
+<p class="pdesc">Upload a notice, get a legally grounded draft reply in minutes instead of hours. The model is constrained to only cite laws from your verified knowledge base — zero hallucination risk.</p>
+<div class="step"><div class="snum">Step 1</div><div class="stitle">Build & index the legal knowledge base</div><div class="code">from langchain.text_splitter import RecursiveCharacterTextSplitter
+from openai import OpenAI
+
+LEGAL_DOCS = [
+  ("income_tax_act",    "data/income_tax_act_1961.pdf"),
+  ("gst_act",           "data/cgst_act_2017.pdf"),
+  ("circular",          "data/gst_circulars_2024.pdf"),
+  ("reply_template",    "data/successful_replies_library.pdf"),
+]
+
+splitter = RecursiveCharacterTextSplitter(
+    chunk_size=400, chunk_overlap=50)
+
+def build_knowledge_base():
+    oai = OpenAI()
+    for doc_type, path in LEGAL_DOCS:
+        text   = extract_pdf_text(path)
+        chunks = splitter.split_text(text)
+        for chunk in chunks:
+            emb = oai.embeddings.create(
+                model="text-embedding-3-small",
+                input=chunk).data[0].embedding
+            db.execute("""INSERT INTO legal_chunks
+                (doc_type, content, embedding)
+                VALUES (:dt,:c,:e)""",
+                dict(dt=doc_type, c=chunk, e=emb))</div></div>
+<div class="step"><div class="snum">Step 2</div><div class="stitle">Notice parser — extract structured fields</div><div class="code">NOTICE_RE = {
+  'notice_type': r'(Intimation|Scrutiny|Demand|Show Cause)',
+  'section':     r'[Uu]nder [Ss]ection\s+(\d+[A-Za-z]*(?:/\d+[A-Za-z]*)*)',
+  'ay':          r'A\.?Y\.?\s*(20\d{2}-\d{2,4})',
+  'demand_amt':  r'(?:Rs|INR|₹)\.?\s*([\d,]+(?:\.\d{2})?)',
+  'due_date':    r'(?:within|by|before)\s+(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})',
+}
+def parse_notice(text: str) -> dict:
+    return {k: (re.search(v,text) or type('',(),{'group':lambda s,i:None})())
+            .group(1) for k,v in NOTICE_RE.items()}</div></div>
+<div class="step"><div class="snum">Step 3</div><div class="stitle">RAG retrieval — semantic search over legal KB</div><div class="code">def retrieve_legal_context(notice_text: str, k=5) -> list[str]:
+    oai = OpenAI()
+    query_emb = oai.embeddings.create(
+        model="text-embedding-3-small",
+        input=notice_text).data[0].embedding
+    rows = db.execute("""
+        SELECT content, 1-(embedding <=> :q::vector) AS similarity
+        FROM legal_chunks ORDER BY similarity DESC LIMIT :k
+    """, dict(q=query_emb, k=k)).fetchall()
+    return [r.content for r in rows]</div></div>
+<div class="step"><div class="snum">Step 4</div><div class="stitle">Guardrailed LLM draft generation</div><div class="code">def draft_reply(notice_data, chunks):
+    context = "\n\n---\n\n".join(chunks)
+    system = f"""You are a legal assistant for a Chartered Accountant.
+STRICT RULES:
+1. Only cite section numbers present in the CONTEXT below.
+2. Never invent case laws, tribunal orders, or circular numbers.
+3. If context is insufficient, write: "CA REVIEW REQUIRED — insufficient legal basis."
+4. Use formal language suitable for Indian tax proceedings.
+VERIFIED LEGAL CONTEXT:
+{context}"""
+    resp = anthropic.messages.create(
+        model="claude-sonnet-4-20250514", max_tokens=2000,
+        system=system,
+        messages=[{"role":"user","content":
+            f"Notice: {json.dumps(notice_data)}\nDraft formal reply."}])
+    draft = resp.content[0].text
+    validation = validate_citations(draft, context)
+    return {"draft": draft, "validation": validation}</div></div>
+<div class="step"><div class="snum">Step 5</div><div class="stitle">Post-generation section number validator</div><div class="code">def validate_citations(draft: str, context: str) -> dict:
+    cited = set(re.findall(
+        r'[Ss]ection\s+(\d+[A-Za-z]*(?:/\d+[A-Za-z]*)*)', draft))
+    unverified = [s for s in cited if s not in context]
+    return {"valid": not unverified,
+            "unverified": unverified,
+            "confidence": "high" if not unverified else "low"}</div></div>
+<div class="dd">
+  <div class="ddc" style="border-color:var(--color-border-success)"><h4 style="color:var(--color-text-success)">Do</h4><ul><li>Validate every cited section post-generation</li><li>Show CA which chunk was used as source</li><li>Flag low-confidence drafts visually</li><li>Update KB when new circulars are issued</li></ul></div>
+  <div class="ddc" style="border-color:var(--color-border-danger)"><h4 style="color:var(--color-text-danger)">Don't</h4><ul><li>Let LLM use general legal knowledge</li><li>Auto-submit any reply without CA approval</li><li>Index third-party legal commentary</li></ul></div>
+</div>
+</div>
+
+<div class="panel" id="ph7">
+<p class="ptitle">Phase 7 — Client health score (weeks 9–10)</p>
+<p class="pdesc">A single 0–100 number per client combining GST compliance, TDS on-time rate, ITC mismatch gap, outstanding notices, and anomaly flags. CAs see instantly who needs urgent attention.</p>
+<div class="step"><div class="snum">Step 1</div><div class="stitle">Five-component scoring model</div><div class="code">def compute_health_score(client_id: str) -> dict:
+    # Component 1: GST on-time filing rate (last 12 months)
+    gst_score = deadline_health_component(client_id) * 25
+
+    # Component 2: ITC reconciliation gap %
+    recon = get_latest_reconciliation(client_id)
+    itc_gap_pct = recon['unmatched_value'] / max(recon['total_value'],1)
+    itc_score = max(0, 25 * (1 - min(itc_gap_pct * 5, 1)))
+
+    # Component 3: Outstanding notices (each = -8 points, max -25)
+    notices = count_open_notices(client_id)
+    notice_score = max(0, 25 - (notices * 8))
+
+    # Component 4: Anomaly density (% of txns flagged)
+    anomaly_rate = get_anomaly_rate(client_id)
+    anomaly_score = max(0, 15 * (1 - min(anomaly_rate * 10, 1)))
+
+    # Component 5: TDS compliance rate
+    tds_score = get_tds_compliance_rate(client_id) * 10
+
+    total = round(gst_score+itc_score+notice_score+anomaly_score+tds_score)
+    tier  = "green" if total>=75 else "amber" if total>=50 else "red"
+    return {"score": total, "tier": tier,
+            "components": {"gst":gst_score,"itc":itc_score,
+            "notices":notice_score,"anomaly":anomaly_score,"tds":tds_score}}</div></div>
+<div class="step"><div class="snum">Step 2</div><div class="stitle">Score history & trend tracking</div><div class="code">CREATE TABLE client_health_history (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  client_id UUID REFERENCES clients(id),
+  score INT, tier TEXT, components JSONB,
+  computed_at TIMESTAMPTZ DEFAULT NOW()
+);
+-- Recompute all scores nightly via Celery Beat
+@celery_app.task
+def recompute_all_health_scores():
+    clients = db.query(Client).all()
+    for c in clients:
+        result = compute_health_score(str(c.id))
+        c.health_score = result['score']
+        db.add(HealthHistory(client_id=c.id, **result))
+    db.commit()</div></div>
+<div class="step"><div class="snum">Step 3</div><div class="stitle">Dashboard homepage widget</div><div class="sbody">The first thing a CA sees when they log in: a sorted list of all clients with their health score badge and a sparkline showing the 3-month trend. Red clients float to the top automatically.</div><div class="tags"><span class="tg">75–100: healthy</span><span class="ta">50–74: needs attention</span><span class="tr">0–49: urgent action</span></div></div>
+</div>
+
+<div class="panel" id="ph8">
+<p class="ptitle">Phase 8 — AI audit working papers (weeks 11–14)</p>
+<p class="pdesc">CA uploads trial balance + ledger exports. AI generates ICAI-format audit observations, risk comments, and a structured working paper draft. Cuts 2 days of prep to 2 hours.</p>
+<div class="step"><div class="snum">Step 1</div><div class="stitle">Trial balance parser</div><div class="code">def parse_trial_balance(df: pd.DataFrame) -> dict:
+    df = df.rename(columns={'Debit':'debit','Credit':'credit',
+        'Account':'account','Group':'group'})
+    df['net'] = df['debit'].fillna(0) - df['credit'].fillna(0)
+    # Compute key totals
+    return {
+      "total_assets":     df[df.group=="Assets"]['net'].sum(),
+      "total_liabilities":df[df.group=="Liabilities"]['net'].sum(),
+      "revenue":          df[df.group=="Revenue"]['net'].abs().sum(),
+      "expenses":         df[df.group=="Expenses"]['net'].sum(),
+      "accounts":         df.to_dict('records')
+    }</div></div>
+<div class="step"><div class="snum">Step 2</div><div class="stitle">Automated ratio computation</div><div class="code">def compute_ratios(tb: dict) -> dict:
+    rev  = tb['revenue']  or 1
+    exp  = tb['expenses'] or 1
+    ast  = tb['total_assets'] or 1
+    liab = tb['total_liabilities'] or 1
+    return {
+      "gross_margin_pct": round((rev-exp)/rev*100, 2),
+      "debt_equity_ratio": round(liab/(ast-liab+0.01), 2),
+      "current_ratio":    round(
+          tb.get('current_assets',0) /
+          max(tb.get('current_liabilities',1),1), 2),
+      "asset_turnover":   round(rev/ast, 2),
+    }</div></div>
+<div class="step"><div class="snum">Step 3</div><div class="stitle">ICAI-format observation generator</div><div class="code">def generate_audit_observations(tb, ratios, anomalies):
+    prompt = f"""You are an audit assistant for an ICAI-registered CA.
+Generate audit observations in standard ICAI working paper format.
+
+Trial Balance Summary: {json.dumps(tb, default=str)}
+Key Ratios: {json.dumps(ratios)}
+Flagged Anomalies: {json.dumps(anomalies)}
+
+For each observation, use this exact structure:
+OBSERVATION: [brief title]
+AREA: [balance sheet / P&L / internal control]
+RISK LEVEL: [High / Medium / Low]
+FINDING: [what was found]
+IMPLICATION: [potential impact]
+RECOMMENDATION: [what the CA should verify or report]
+
+Generate 5-8 observations. Focus on material items only."""
+    resp = anthropic.messages.create(
+        model="claude-sonnet-4-20250514", max_tokens=3000,
+        messages=[{"role":"user","content":prompt}])
+    return resp.content[0].text</div></div>
+<div class="step"><div class="snum">Step 4</div><div class="stitle">DOCX working paper export</div><div class="code">pip install python-docx
+
+from docx import Document as DocxDoc
+from docx.shared import Pt, RGBColor
+
+def export_working_paper(client_name, observations, ratios):
+    doc = DocxDoc()
+    doc.add_heading(f'Audit Working Paper — {client_name}', 0)
+    doc.add_paragraph(f'Generated: {datetime.now().strftime("%d %b %Y")}')
+    doc.add_heading('Key Financial Ratios', level=1)
+    t = doc.add_table(rows=1, cols=2)
+    t.rows[0].cells[0].text = 'Ratio'
+    t.rows[0].cells[1].text = 'Value'
+    for k,v in ratios.items():
+        row = t.add_row()
+        row.cells[0].text, row.cells[1].text = k, str(v)
+    doc.add_heading('Audit Observations', level=1)
+    doc.add_paragraph(observations)
+    path = f"/tmp/{uuid4()}_working_paper.docx"
+    doc.save(path)
+    s3_key = upload_to_s3_path(path)
+    return s3_key</div></div>
+</div>
+
+<div class="panel" id="ph9">
+<p class="ptitle">Phase 9 — Anomaly & fraud detection (weeks 13–16)</p>
+<p class="pdesc">Scans ledger data for Benford's Law violations, round-number payments, weekend transactions, duplicate entries, and sudden vendor spikes. Generates a prioritized risk shortlist for the auditor.</p>
+<div class="step"><div class="snum">Step 1</div><div class="stitle">Benford's Law test</div><div class="sbody">Genuine financial data follows Benford's Law: ~30% of amounts start with 1, ~18% with 2, etc. Fabricated data often doesn't. Flag clients where the distribution deviates significantly.</div><div class="code">import numpy as np
+from scipy import stats
+
+BENFORD = [0.301,0.176,0.125,0.097,0.079,0.067,0.058,0.051,0.046]
+
+def benford_test(amounts: list) -> dict:
+    first_digits = [int(str(abs(a))[0]) for a in amounts if a!=0]
+    observed = [first_digits.count(d)/len(first_digits)
+                for d in range(1,10)]
+    chi2, p_val = stats.chisquare(observed, f_exp=BENFORD)
+    return {"chi2": round(chi2,3), "p_value": round(p_val,4),
+            "suspicious": p_val < 0.05,
+            "deviation": [round(o-e,3) for o,e
+                          in zip(observed,BENFORD)]}</div></div>
+<div class="step"><div class="snum">Step 2</div><div class="stitle">Rule-based anomaly flags</div><div class="code">def flag_rule_anomalies(txns_df) -> pd.DataFrame:
+    flags = []
+    # Round number payments (common in fabricated invoices)
+    txns_df['flag_round'] = (txns_df['amount'] % 1000 == 0) & \
+                             (txns_df['amount'] > 10000)
+    # Weekend transactions
+    txns_df['flag_weekend'] = pd.to_datetime(
+        txns_df['date']).dt.dayofweek >= 5
+    # Duplicate invoice numbers
+    txns_df['flag_duplicate'] = txns_df.duplicated(
+        subset=['invoice_no','vendor_gstin'], keep=False)
+    # Just-below threshold (₹49,999 to avoid ₹50,000 TDS limit)
+    txns_df['flag_threshold'] = (txns_df['amount'] >= 45000) & \
+                                 (txns_df['amount'] < 50000)
+    # Combined risk score
+    txns_df['risk_flags'] = (txns_df['flag_round'].astype(int) +
+        txns_df['flag_weekend'].astype(int) +
+        txns_df['flag_duplicate'].astype(int)*3 +  # weighted higher
+        txns_df['flag_threshold'].astype(int)*2)
+    return txns_df</div></div>
+<div class="step"><div class="snum">Step 3</div><div class="stitle">Sudden vendor spike detector</div><div class="code">def detect_vendor_spikes(client_id: str) -> list:
+    txns = get_recent_transactions(client_id, months=3)
+    prev = get_historical_transactions(client_id, months=6, offset=3)
+    spikes = []
+    for gstin in txns.vendor_gstin.unique():
+        curr_total = txns[txns.vendor_gstin==gstin]['amount'].sum()
+        prev_avg   = (prev[prev.vendor_gstin==gstin]['amount']
+                      .sum() / 2)  # monthly average
+        if prev_avg > 0 and curr_total > prev_avg * 3:
+            spikes.append({
+              "vendor_gstin": gstin,
+              "current_3m":   curr_total,
+              "prev_monthly_avg": prev_avg,
+              "multiple": round(curr_total/prev_avg/3, 1)
+            })
+    return sorted(spikes, key=lambda x:-x['multiple'])</div></div>
+</div>
+
+<div class="panel" id="ph10">
+<p class="ptitle">Phase 10 — Invoice fraud scanner (weeks 15–18)</p>
+<p class="pdesc">CA uploads a batch of invoices. System verifies GSTIN validity, detects duplicates, checks tax math, and flags metadata tampering — all automatically.</p>
+<div class="step"><div class="snum">Step 1</div><div class="stitle">GSTIN validator — live API check</div><div class="code">import requests
+
+def validate_gstin(gstin: str) -> dict:
+    # Use GSTN's public search API
+    url = f"https://online.mastergstin.com/api/v3.0/search?gstin={gstin}"
+    try:
+        r = requests.get(url, timeout=5)
+        data = r.json()
+        return {"valid": data.get("status")=="ACTIVE",
+                "name":  data.get("tradeNam",""),
+                "state": data.get("stj",""),
+                "status":data.get("sts","")}
+    except:
+        # Offline fallback: regex format check
+        pattern = r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$'
+        return {"valid": bool(re.match(pattern, gstin)), "offline": True}</div></div>
+<div class="step"><div class="snum">Step 2</div><div class="stitle">Tax calculation cross-checker</div><div class="code">GST_RATES = [0, 0.05, 0.12, 0.18, 0.28]
+
+def verify_invoice_tax(invoice_data: dict) -> dict:
+    base   = invoice_data.get('taxable_amount', 0)
+    cgst   = invoice_data.get('cgst_amount',    0)
+    sgst   = invoice_data.get('sgst_amount',    0)
+    igst   = invoice_data.get('igst_amount',    0)
+    total  = invoice_data.get('total_amount',   0)
+    issues = []
+    # CGST should equal SGST for intra-state
+    if abs(cgst - sgst) > 1:
+        issues.append("CGST ≠ SGST (intra-state mismatch)")
+    # Tax rate should be a standard GST rate
+    actual_rate = (cgst+sgst+igst) / max(base,1)
+    if not any(abs(actual_rate-r)<0.005 for r in GST_RATES):
+        issues.append(f"Non-standard tax rate: {actual_rate*100:.1f}%")
+    # Total should equal base + taxes
+    expected_total = base + cgst + sgst + igst
+    if abs(total - expected_total) > 2:
+        issues.append(f"Total mismatch: ₹{total} vs expected ₹{expected_total:.2f}")
+    return {"valid": len(issues)==0, "issues": issues}</div></div>
+<div class="step"><div class="snum">Step 3</div><div class="stitle">Duplicate invoice hash detector</div><div class="code">import hashlib
+
+def generate_invoice_fingerprint(invoice_data: dict) -> str:
+    # Fingerprint: vendor GSTIN + invoice number + amount + date
+    key = f"{invoice_data['vendor_gstin']}|{invoice_data['invoice_no']}|{invoice_data['amount']}|{invoice_data['date']}"
+    return hashlib.sha256(key.encode()).hexdigest()
+
+def check_duplicate(fingerprint: str, client_id: str) -> bool:
+    existing = db.query(Transaction).filter(
+        Transaction.client_id == client_id,
+        Transaction.fingerprint == fingerprint).first()
+    return existing is not None</div></div>
+<div class="tags"><span class="tr">Invalid GSTIN</span><span class="tr">Tax math error</span><span class="tr">Duplicate invoice</span><span class="ta">Non-standard rate</span><span class="ta">New vendor</span></div>
+</div>
+
+<div class="panel" id="ph11">
+<p class="ptitle">Phase 11 — Natural language query engine (weeks 17–20)</p>
+<p class="pdesc">A CA types "Show me all clients with ITC mismatch above ₹1 lakh this quarter" and gets a filtered data table instantly. No dashboards to learn — just ask in plain English.</p>
+<div class="step"><div class="snum">Step 1</div><div class="stitle">Schema context builder</div><div class="sbody">Give the LLM a precise description of your database schema — table names, column names, and what each means. The model needs this to write accurate SQL. Never give it the full schema — only the tables relevant to financial queries.</div><div class="code">SCHEMA_CONTEXT = """
+Available tables (org_id filter always applied automatically):
+
+clients(id, name, gstin, health_score, industry)
+transactions(id, client_id, invoice_no, vendor_name, vendor_gstin,
+  amount, date, match_status, anomaly_score)
+  match_status values: 'matched','unmatched','tolerance','fuzzy'
+reconciliation_results(client_id, period, match_type, mismatch_reason)
+compliance_deadlines(client_id, filing_type, period, deadline, status)
+  status values: 'pending','filed','missed'
+client_health_history(client_id, score, tier, computed_at)
+  tier values: 'green','amber','red'
+documents(client_id, doc_type, source, status, created_at)
+  source values: 'upload','whatsapp'
+"""</div></div>
+<div class="step"><div class="snum">Step 2</div><div class="stitle">Text-to-SQL with org_id injection</div><div class="code">def natural_language_query(question: str, org_id: str) -> dict:
+    system = f"""You convert natural language questions into PostgreSQL queries.
+SCHEMA:{SCHEMA_CONTEXT}
+RULES:
+1. ALWAYS include WHERE org_id = '{org_id}' in every query.
+2. Use JOINs through clients table when joining other tables.
+3. Return ONLY the SQL query — no explanation, no markdown.
+4. Use ILIKE for text searches (case-insensitive).
+5. Never use DELETE, UPDATE, INSERT, DROP, or any write operation."""
+    resp = anthropic.messages.create(
+        model="claude-sonnet-4-20250514", max_tokens=500,
+        system=system,
+        messages=[{"role":"user","content":question}])
+    sql = resp.content[0].text.strip()
+    # Safety: block any write operations
+    if any(w in sql.upper() for w in
+           ['DELETE','UPDATE','INSERT','DROP','TRUNCATE','ALTER']):
+        raise ValueError("Write operations not permitted in NL query")
+    results = db.execute(text(sql), {"org_id":org_id}).fetchall()
+    return {"sql": sql, "rows": [dict(r) for r in results]}</div></div>
+<div class="step"><div class="snum">Step 3</div><div class="stitle">Saved query library</div><div class="sbody">Let CAs save frequently-used queries as shortcuts. Pre-populate with 10 common queries on first login.</div><div class="code">STARTER_QUERIES = [
+  "Show all clients with health score below 50",
+  "Clients who missed GSTR-3B last month",
+  "Transactions with anomaly score above 0.7 this quarter",
+  "Clients who haven't sent documents via WhatsApp this month",
+  "Unmatched ITC transactions above ₹50,000",
+  "All clients with open tax notices",
+]</div></div>
+</div>
+
+<div class="panel" id="ph12">
+<p class="ptitle">Phase 12 — Cross-client benchmarking (weeks 19–22)</p>
+<p class="pdesc">With opt-in consent, aggregate anonymized financial ratios across clients in the same industry. CAs can tell clients "your gross margin is 11% vs industry peers at 19%" — an advisory insight that justifies their fees.</p>
+<div class="step"><div class="snum">Step 1</div><div class="stitle">Client consent + industry tagging</div><div class="code">ALTER TABLE clients ADD COLUMN benchmark_consent_at TIMESTAMPTZ;
+ALTER TABLE clients ADD COLUMN industry TEXT;
+-- Industry options: retail, manufacturing, services, 
+-- real_estate, healthcare, hospitality, it_services
+
+-- Only clients who have explicitly opted in contribute data
+def get_benchmark_pool(industry: str, exclude_org_id: str):
+    return db.query(Client).filter(
+        Client.industry == industry,
+        Client.benchmark_consent_at.isnot(None),
+        Client.org_id != exclude_org_id  # never include own clients
+    ).all()</div></div>
+<div class="step"><div class="snum">Step 2</div><div class="stitle">Anonymized ratio aggregator</div><div class="code">def compute_industry_benchmarks(industry: str,
+                                 exclude_org: str) -> dict:
+    pool = get_benchmark_pool(industry, exclude_org)
+    if len(pool) < 5:
+        return None  # minimum 5 peers to protect privacy
+
+    ratios_list = []
+    for client in pool:
+        tb = get_latest_trial_balance(client.id)
+        if tb: ratios_list.append(compute_ratios(tb))
+
+    if not ratios_list: return None
+    df = pd.DataFrame(ratios_list)
+    return {
+      "industry": industry,
+      "peer_count": len(ratios_list),
+      "benchmarks": {
+        col: {
+          "median": round(df[col].median(), 2),
+          "p25":    round(df[col].quantile(.25), 2),
+          "p75":    round(df[col].quantile(.75), 2),
+        } for col in df.columns
+      }
+    }</div></div>
+<div class="step"><div class="snum">Step 3</div><div class="stitle">Client comparison report</div><div class="sbody">Generate a CA-shareable PDF showing the client's ratios vs industry percentiles. This is a premium feature — charge extra for it or include it in the advisory tier.</div><div class="tags"><span class="tg">Min 5 peers required for privacy</span><span class="tb">Explicit opt-in only</span><span class="ta">Premium tier feature</span></div></div>
+</div>
+
+<div class="panel" id="ph13">
+<p class="ptitle">Phase 13 — Frontend, dashboard & ERP connectors (weeks 13–16)</p>
+<p class="pdesc">CAs will judge your product by the UI. Keep it dense, fast, and tabular — like a professional tool. AG Grid for data tables, not pretty charts.</p>
+<div class="step"><div class="snum">Step 1</div><div class="stitle">Next.js 14 + AG Grid setup</div><div class="code">npx create-next-app@latest ca-platform --typescript --app
+cd ca-platform
+npm install ag-grid-react ag-grid-community
+npm install @tanstack/react-query axios
+npm install react-pdf @tiptap/react @tiptap/starter-kit
+npx shadcn-ui@latest init</div></div>
+<div class="step"><div class="snum">Step 2</div><div class="stitle">Maker-Checker RBAC hook</div><div class="code">// hooks/usePermission.ts
+const PERMS: Record<string, string[]> = {
+  'export:reconciliation':  ['partner','manager'],
+  'approve:notice_draft':   ['partner'],
+  'approve:working_paper':  ['partner','manager'],
+  'send:whatsapp_manual':   ['partner','manager'],
+  'view:benchmarking':      ['partner'],
+  'upload:document':        ['partner','manager','article'],
+};
+export function usePermission(action: string) {
+  const { user } = useAuth();
+  return PERMS[action]?.includes(user?.role) ?? false;
+}</div></div>
+<div class="step"><div class="snum">Step 3</div><div class="stitle">WhatsApp status dashboard table</div><div class="sbody">The CA homepage shows every client, their required documents for the current period, submission status badge, and a one-click "Send Reminder" button. This is your most-used feature — make it fast.</div></div>
+<div class="step"><div class="snum">Step 4</div><div class="stitle">Zoho Books OAuth connector</div><div class="code">def fetch_zoho_transactions(org_id, access_token, from_dt, to_dt):
+    r = requests.get("https://books.zoho.in/api/v3/bills",
+        headers={"Authorization":f"Zoho-oauthtoken {access_token}"},
+        params={"organization_id":org_id,
+                "date_start":from_dt,"date_end":to_dt,"per_page":200})
+    return r.json().get("bills",[])</div></div>
+<div class="step"><div class="snum">Step 5</div><div class="stitle">Split-screen notice editor</div><div class="sbody">Left panel: react-pdf renders the original notice PDF with highlighted risk sections. Right panel: TipTap rich-text editor with the AI-generated draft. CA edits and approves before download. Partner-only export button.</div></div>
+</div>
+
+<div class="panel" id="ph14">
+<p class="ptitle">Phase 14 — Security hardening & beta launch (weeks 20–24)</p>
+<p class="pdesc">Before any real client data enters the system, pass every item on this checklist. A data breach kills a TaxTech company overnight.</p>
+<div class="step"><div class="snum">Step 1</div><div class="stitle">Tenant isolation test — must pass 100%</div><div class="code">def test_tenant_isolation():
+    token_a = login(org_a); token_b = login(org_b)
+    doc_id  = upload_document(token_a, test_pdf)
+    # Org B must not see Org A's document
+    r = get_document(token_b, doc_id)
+    assert r.status_code == 404
+    # Org B's transaction list must not contain Org A's data
+    txns = get_transactions(token_b)
+    assert all(t['org_id'] == org_b['id'] for t in txns)
+    # Natural language query must not leak cross-tenant data
+    result = nl_query(token_b, "show all transactions")
+    assert not any(t['org_id']==org_a['id'] for t in result['rows'])</div></div>
+<div class="step"><div class="snum">Step 2</div><div class="stitle">Encryption + HTTPS enforcement</div><div class="tags"><span class="tg">RDS: AES-256 at rest</span><span class="tg">S3: SSE-S3 encryption</span><span class="tg">API Gateway: TLS 1.2+ only</span><span class="tg">ACM SSL certificate</span></div></div>
+<div class="step"><div class="snum">Step 3</div><div class="stitle">Rate limiting + WAF</div><div class="code">from slowapi import Limiter
+limiter = Limiter(key_func=lambda req: req.state.org_id)
+
+@router.post("/documents/upload-url")
+@limiter.limit("20/minute")  # prevent upload flooding
+async def upload_url(req: Request, ...): ...
+
+@router.post("/webhook/whatsapp")
+@limiter.limit("100/minute")  # prevent webhook abuse
+async def wa_webhook(req: Request, ...): ...</div></div>
+<div class="step"><div class="snum">Step 4</div><div class="stitle">Beta: 3–5 mid-tier CA firms, free for 3 months</div><div class="sbody">Target firms with 5–20 staff, 30+ clients, in Hyderabad, Pune, or Ahmedabad. Offer 3 months free in exchange for weekly 30-min feedback calls. Give them your WhatsApp for direct bug reports.</div><div class="tags"><span class="tb">5–20 staff firms</span><span class="tg">30+ clients per firm</span><span class="tg">3 months free</span><span class="ta">Weekly feedback calls</span></div></div>
+<div class="step"><div class="snum">Step 5</div><div class="stitle">Legal — DPDP Act DPA agreement</div><div class="sbody">Under India's Digital Personal Data Protection Act 2023, you are a Data Processor. Every CA firm must sign a Data Processing Agreement before using the platform. It must specify: data stays in India, 72-hour breach notification, deletion on contract end.</div></div>
+<div class="ms"><h4>Beta launch checklist — all must be green</h4><ul><li>Tenant isolation test passes 100% for all endpoints</li><li>All data encrypted at rest and in transit</li><li>WhatsApp reminders tested with real numbers in sandbox</li><li>PII masking verified — no raw PANs in database</li><li>3 CA firms onboarded and using the system</li><li>DPA agreements signed with all beta firms</li><li>Sentry + CloudWatch alerts configured and firing correctly</li></ul></div>
+<div style="margin-top:10px">
+  <button onclick="sendPrompt('Give me the full DPDP Act 2023 Data Processing Agreement template for a CA SaaS platform')" style="font-size:11px;padding:6px 12px;cursor:pointer">Get DPA template ↗</button>
+  <button onclick="sendPrompt('Give me the complete database schema SQL for the entire CA Intelligence Platform')" style="font-size:11px;padding:6px 12px;cursor:pointer;margin-left:8px">Get full DB schema ↗</button>
+</div>
+</div>
+
+<div class="nav">
+  <button onclick="prev()" id="bp" style="font-size:11px;padding:5px 12px;cursor:pointer">Previous</button>
+  <span id="pc">Phase 1 of 15</span>
+  <button onclick="next()" id="bn" style="font-size:11px;padding:5px 12px;cursor:pointer">Next</button>
+</div>
+</div>
+</div>
+
+<script>
+let cur=0,tot=15;
+function go(n){
+  document.querySelectorAll('.panel').forEach((p,i)=>p.classList.toggle('on',i===n));
+  document.querySelectorAll('.pbtn').forEach((b,i)=>b.classList.toggle('on',i===n));
+  document.getElementById('pf').style.width=Math.round((n+1)/tot*100)+'%';
+  document.getElementById('pc').textContent='Phase '+(n+1)+' of '+tot;
+  document.getElementById('bp').disabled=n===0;
+  document.getElementById('bn').disabled=n===tot-1;
+  document.querySelector('.main').scrollTop=0;
+  cur=n;
+}
+function next(){if(cur<tot-1)go(cur+1);}
+function prev(){if(cur>0)go(cur-1);}
+go(0);
+</script>

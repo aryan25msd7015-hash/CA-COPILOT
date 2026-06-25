@@ -1,0 +1,1113 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{display:grid;grid-template-columns:190px 1fr;min-height:680px}
+.sb{border-right:0.5px solid var(--color-border-tertiary);padding:8px 0;overflow-y:auto;max-height:680px}
+.pb-sec{padding:7px 12px 3px;font-size:9px;font-weight:500;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.07em;border-top:0.5px solid var(--color-border-tertiary);margin-top:4px}
+.pb-sec:first-child{border-top:none;margin-top:0}
+.pbtn{width:100%;text-align:left;padding:7px 12px;font-size:11px;font-weight:500;color:var(--color-text-secondary);background:none;border:none;border-left:2px solid transparent;cursor:pointer;line-height:1.3;transition:all .12s}
+.pbtn span{display:block;font-size:9px;font-weight:400;color:var(--color-text-tertiary);margin-top:1px}
+.pbtn:hover{background:var(--color-background-secondary);color:var(--color-text-primary)}
+.pbtn.on{color:var(--color-text-info);border-left-color:var(--color-border-info);background:var(--color-background-info)}
+.main{padding:18px 22px;overflow-y:auto;max-height:680px}
+.panel{display:none}.panel.on{display:block}
+.ptitle{font-size:15px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px}
+.pdesc{font-size:12px;color:var(--color-text-secondary);line-height:1.65;margin-bottom:14px}
+.step{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:9px;padding:12px 14px;margin-bottom:10px}
+.sn{font-size:9px;font-weight:500;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.st{font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:5px}
+.sb2{font-size:11px;color:var(--color-text-secondary);line-height:1.7;margin-bottom:6px}
+.code{font-family:var(--font-mono);font-size:10px;background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:6px;padding:8px 10px;margin:5px 0;white-space:pre;overflow-x:auto;color:var(--color-text-primary);line-height:1.5}
+.tags{display:flex;flex-wrap:wrap;gap:4px;margin:5px 0}
+.tag{font-size:9px;padding:2px 7px;border-radius:3px;font-weight:500}
+.tg{background:var(--color-background-success);color:var(--color-text-success)}
+.tb{background:var(--color-background-info);color:var(--color-text-info)}
+.ta{background:var(--color-background-warning);color:var(--color-text-warning)}
+.tr{background:var(--color-background-danger);color:var(--color-text-danger)}
+.dd{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.ddc{padding:10px 12px;border-radius:6px;border:0.5px solid var(--color-border-tertiary)}
+.ddc h4{font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.ddc ul{padding-left:12px;font-size:10px;color:var(--color-text-secondary);line-height:1.9}
+.ms{margin-top:10px;padding:10px 12px;border-radius:6px;background:var(--color-background-success);border:0.5px solid var(--color-border-success)}
+.ms h4{font-size:9px;font-weight:500;color:var(--color-text-success);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.ms ul{padding-left:13px;font-size:10px;color:var(--color-text-success);line-height:1.9}
+.cal-demo{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:8px;padding:12px;margin:10px 0;overflow-x:auto}
+.cal-table{width:100%;border-collapse:collapse;font-size:10px}
+.cal-table th{padding:6px 10px;text-align:left;font-size:9px;font-weight:500;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.05em;border-bottom:0.5px solid var(--color-border-tertiary);white-space:nowrap}
+.cal-table td{padding:6px 10px;border-bottom:0.5px solid var(--color-border-tertiary);color:var(--color-text-secondary);vertical-align:middle;white-space:nowrap}
+.cal-table tr:last-child td{border-bottom:none}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:middle}
+.dg{background:#16a34a}.db{background:#2563eb}.da{background:#d97706}.dr{background:#dc2626}
+.pbar{height:2px;background:var(--color-border-tertiary);border-radius:1px;margin-bottom:12px}
+.pbar-f{height:100%;background:var(--color-border-info);border-radius:1px;transition:width .3s}
+.nav{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:10px;border-top:0.5px solid var(--color-border-tertiary)}
+.nav span{font-size:10px;color:var(--color-text-tertiary)}
+.schema-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+</style>
+
+<div class="wrap">
+<div class="sb">
+  <div class="pb-sec">New core modules</div>
+  <button class="pbtn on" onclick="go(0)">Advanced Calendar<span>Client-aware deadlines</span></button>
+  <button class="pbtn" onclick="go(1)">MSME Tracker<span>Sec 43B(h) automation</span></button>
+  <button class="pbtn" onclick="go(2)">Drawing Power<span>Stock & debtor engine</span></button>
+  <button class="pbtn" onclick="go(3)">CA Certificates<span>Auto-generate + sign</span></button>
+  <div class="pb-sec">AI document modules</div>
+  <button class="pbtn" onclick="go(4)">MCA Secretarial<span>Board minutes & filings</span></button>
+  <button class="pbtn" onclick="go(5)">Lease Intelligence<span>Ind AS 116 / IFRS 16</span></button>
+  <button class="pbtn" onclick="go(6)">RFP Bid Generator<span>Audit bid auto-drafter</span></button>
+  <div class="pb-sec">Internal tools</div>
+  <button class="pbtn" onclick="go(7)">Timesheet Auditor<span>Article clerk analytics</span></button>
+</div>
+
+<div class="main">
+<div class="pbar"><div class="pbar-f" id="pf" style="width:12%"></div></div>
+
+<!-- PANEL 0: Advanced Compliance Calendar -->
+<div class="panel on" id="ph0">
+<p class="ptitle">Advanced Compliance Calendar — client-aware, risk-aware</p>
+<p class="pdesc">Not just a list of dates. Every deadline shows which specific clients are at risk, which haven't sent data, which have a history of lateness, and which already have open notices for the same period. CAs see the full picture in one grid.</p>
+
+<p style="font-size:11px;font-weight:500;color:var(--color-text-primary);margin-bottom:6px">What it looks like vs a basic calendar</p>
+<div class="cal-demo">
+<table class="cal-table">
+<tr>
+  <th>Deadline</th><th>Date</th><th>At-risk clients</th><th>Data received</th><th>Late history</th><th>Open notice</th><th>Priority</th>
+</tr>
+<tr>
+  <td><strong>GSTR-3B</strong></td><td>20 Nov</td>
+  <td><span class="dot dr"></span>8 of 22</td>
+  <td><span class="dot da"></span>14/22 done</td>
+  <td><span class="dot dr"></span>3 chronic</td>
+  <td><span class="dot dr"></span>2 clients</td>
+  <td><span class="tag tr">Urgent</span></td>
+</tr>
+<tr>
+  <td><strong>TDS 24Q</strong></td><td>31 Oct</td>
+  <td><span class="dot da"></span>3 of 18</td>
+  <td><span class="dot tg"></span>18/18 done</td>
+  <td><span class="dot dg"></span>0 chronic</td>
+  <td><span class="dot dg"></span>0</td>
+  <td><span class="tag tg">On track</span></td>
+</tr>
+<tr>
+  <td><strong>ROC AOC-4</strong></td><td>29 Oct</td>
+  <td><span class="dot dr"></span>5 of 8</td>
+  <td><span class="dot dr"></span>3/8 done</td>
+  <td><span class="dot da"></span>1 chronic</td>
+  <td><span class="dot da"></span>1 client</td>
+  <td><span class="tag ta">Review</span></td>
+</tr>
+</table>
+</div>
+
+<div class="step">
+  <div class="sn">Step 1 — Schema upgrade</div>
+  <div class="st">Client-deadline mapping table</div>
+  <div class="sb2">Every deadline must be linked to the specific clients it applies to — not all filings apply to all clients (e.g., AOC-4 only applies to companies, not proprietorships). Add a mapping table and applicability flags.</div>
+  <div class="code">CREATE TABLE deadline_client_map (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  org_id UUID REFERENCES organizations(id),
+  client_id UUID REFERENCES clients(id),
+  filing_type TEXT, -- GSTR1,GSTR3B,TDS_24Q,ROC_AOC4,ADV_TAX,MSME_AUDIT
+  period TEXT,      -- '2024-10'
+  deadline DATE,
+  -- DATA STATUS
+  data_received BOOLEAN DEFAULT FALSE,
+  data_received_at TIMESTAMPTZ,
+  data_source TEXT, -- 'whatsapp','upload','erp'
+  -- FILING STATUS
+  status TEXT DEFAULT 'pending', -- pending,filed,missed
+  filed_at TIMESTAMPTZ,
+  -- RISK SIGNALS
+  late_count_last_12m INT DEFAULT 0,   -- computed nightly
+  has_open_notice BOOLEAN DEFAULT FALSE,-- computed nightly
+  risk_score NUMERIC(3,1) DEFAULT 5.0, -- 0-10, computed
+  -- WA REMINDERS
+  reminders_sent INT DEFAULT 0,
+  last_reminder_at TIMESTAMPTZ
+);</div>
+</div>
+
+<div class="step">
+  <div class="sn">Step 2 — Nightly risk scorer</div>
+  <div class="st">Compute per-client risk score for each upcoming deadline</div>
+  <div class="sb2">Run nightly via Celery Beat. Each client-deadline pair gets a 0–10 risk score based on 5 signals. The calendar sorts by this score — highest risk floats to top.</div>
+  <div class="code">@celery_app.task
+def score_deadline_risks():
+    """Runs nightly at 8pm — before morning reminders"""
+    upcoming = db.query(DeadlineClientMap).filter(
+        DeadlineClientMap.deadline >= date.today(),
+        DeadlineClientMap.deadline <= date.today()+timedelta(days=14),
+        DeadlineClientMap.status == 'pending'
+    ).all()
+
+    for row in upcoming:
+        score = 0.0
+        days_left = (row.deadline - date.today()).days
+
+        # Signal 1: Days remaining (closer = higher risk)
+        if days_left <= 2:   score += 3.0
+        elif days_left <= 5: score += 2.0
+        elif days_left <= 10:score += 1.0
+
+        # Signal 2: Data not yet received
+        if not row.data_received:
+            score += 2.5
+
+        # Signal 3: Client's late history for this filing type
+        if row.late_count_last_12m >= 3: score += 2.0
+        elif row.late_count_last_12m >= 1: score += 1.0
+
+        # Signal 4: Open notice for same filing type
+        if row.has_open_notice: score += 1.5
+
+        # Signal 5: Health score below 50
+        client = db.query(Client).get(row.client_id)
+        if client.health_score < 50: score += 1.0
+
+        row.risk_score = min(score, 10.0)
+
+    db.commit()</div>
+</div>
+
+<div class="step">
+  <div class="sn">Step 3 — Applicability engine</div>
+  <div class="st">Auto-tag which filings apply to which clients</div>
+  <div class="code">CLIENT_FILING_MATRIX = {
+  'proprietorship':['GSTR1','GSTR3B','ITR','TDS_26Q'],
+  'partnership':   ['GSTR1','GSTR3B','ITR','TDS_26Q','FORM_3CB'],
+  'pvt_ltd':       ['GSTR1','GSTR3B','TDS_24Q','TDS_26Q',
+                    'ROC_AOC4','ROC_MGT7','ADV_TAX','FORM_3CA'],
+  'llp':           ['GSTR1','GSTR3B','TDS_26Q','ROC_LLP8',
+                    'ROC_LLP11','ADV_TAX'],
+  'trust':         ['ITR_7','FCRA_IF_APPLICABLE'],
+}
+
+def seed_client_deadlines(client_id: str, period: str):
+    client = db.query(Client).get(client_id)
+    applicable = CLIENT_FILING_MATRIX.get(client.entity_type, [])
+    for filing in applicable:
+        deadline = compute_deadline(filing, period)
+        if deadline:
+            row = DeadlineClientMap(
+                org_id=client.org_id, client_id=client_id,
+                filing_type=filing, period=period,
+                deadline=deadline,
+                late_count_last_12m=get_late_count(client_id,filing))
+            db.merge(row)
+    db.commit()</div>
+</div>
+
+<div class="step">
+  <div class="sn">Step 4 — Calendar API endpoint</div>
+  <div class="st">Single endpoint powering the entire calendar view</div>
+  <div class="code">@router.get("/calendar/overview")
+async def calendar_overview(
+    days_ahead: int = 30, req: Request = None):
+    rows = db.execute("""
+        SELECT
+          dcm.filing_type, dcm.deadline, dcm.period,
+          COUNT(*) FILTER(WHERE dcm.status='pending') AS total_pending,
+          COUNT(*) FILTER(WHERE dcm.risk_score >= 7) AS high_risk_count,
+          COUNT(*) FILTER(WHERE dcm.data_received=FALSE
+                          AND dcm.status='pending') AS data_missing,
+          COUNT(*) FILTER(WHERE dcm.late_count_last_12m >= 2) AS chronic_late,
+          COUNT(*) FILTER(WHERE dcm.has_open_notice=TRUE) AS has_notice,
+          MAX(dcm.risk_score) AS max_risk,
+          -- Aggregate deadline-level status
+          CASE WHEN MAX(dcm.risk_score)>=7 THEN 'urgent'
+               WHEN MAX(dcm.risk_score)>=4 THEN 'review'
+               ELSE 'on_track' END AS priority
+        FROM deadline_client_map dcm
+        WHERE dcm.org_id = :oid
+          AND dcm.deadline BETWEEN NOW() AND NOW()+(:days||' days')::interval
+        GROUP BY dcm.filing_type, dcm.deadline, dcm.period
+        ORDER BY dcm.deadline ASC, max_risk DESC
+    """, dict(oid=req.state.org_id, days=days_ahead)).fetchall()
+    return [dict(r) for r in rows]
+
+@router.get("/calendar/{filing_type}/{period}/clients")
+async def deadline_clients(
+    filing_type: str, period: str, req: Request):
+    """Drill-down: show all clients for a specific deadline"""
+    rows = db.execute("""
+        SELECT c.name, c.gstin, c.health_score,
+               dcm.risk_score, dcm.data_received, dcm.data_source,
+               dcm.late_count_last_12m, dcm.has_open_notice,
+               dcm.reminders_sent, dcm.status
+        FROM deadline_client_map dcm
+        JOIN clients c ON c.id = dcm.client_id
+        WHERE dcm.org_id = :oid AND dcm.filing_type = :ft
+          AND dcm.period = :p
+        ORDER BY dcm.risk_score DESC
+    """, dict(oid=req.state.org_id, ft=filing_type, p=period)).fetchall()
+    return [dict(r) for r in rows]</div>
+</div>
+
+<div class="step">
+  <div class="sn">Step 5 — WhatsApp integration for the calendar</div>
+  <div class="st">Bulk send reminders from the calendar view with one click</div>
+  <div class="sb2">CA selects a deadline row, clicks "Remind all pending" — system sends WhatsApp reminders only to clients with data_received=False and reminders_sent less than 3. No manual selecting of individual clients.</div>
+  <div class="code">@router.post("/calendar/{filing_type}/{period}/bulk-remind")
+async def bulk_remind(filing_type: str, period: str,
+                      req: Request):
+    if req.state.role not in ('partner','manager'):
+        raise HTTPException(403)
+    pending = db.query(DeadlineClientMap).filter(
+        DeadlineClientMap.org_id == req.state.org_id,
+        DeadlineClientMap.filing_type == filing_type,
+        DeadlineClientMap.period == period,
+        DeadlineClientMap.data_received == False,
+        DeadlineClientMap.reminders_sent < 3,
+        DeadlineClientMap.status == 'pending'
+    ).all()
+    sent = 0
+    for row in pending:
+        client = db.query(Client).get(row.client_id)
+        if client.whatsapp_consent_at and client.whatsapp_number:
+            send_whatsapp_template.delay(
+                client.whatsapp_number,
+                'data_request_reminder',
+                [client.name, filing_type,
+                 row.deadline.strftime('%d %b'), filing_type])
+            row.reminders_sent += 1
+            row.last_reminder_at = datetime.now()
+            sent += 1
+    db.commit()
+    return {"reminders_sent": sent, "skipped": len(pending)-sent}</div>
+</div>
+
+<div class="ms"><h4>Advanced calendar milestone</h4><ul>
+  <li>Calendar shows risk score, data status, late history per deadline — not just dates</li>
+  <li>Drill-down to client list for any deadline in one click</li>
+  <li>Bulk WhatsApp reminder fires from calendar row</li>
+  <li>Nightly risk scorer updates at 8pm before 9am reminders</li>
+  <li>Entity-type applicability seeded on client creation</li>
+</ul></div>
+</div>
+
+<!-- PANEL 1: MSME -->
+<div class="panel" id="ph1">
+<p class="ptitle">MSME Payment Audit — Section 43B(h) tracker</p>
+<p class="pdesc">Automatically identifies MSME vendors, monitors 45-day payment windows in the accounts payable ledger, computes disallowance amounts, and flags violations before tax audit season. Zero manual work for the CA.</p>
+
+<div class="step">
+  <div class="sn">Step 1 — DB tables</div>
+  <div class="st">MSME vendor registry</div>
+  <div class="code">CREATE TABLE msme_vendors (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  org_id UUID REFERENCES organizations(id),
+  client_id UUID REFERENCES clients(id),
+  vendor_gstin TEXT,
+  vendor_name TEXT,
+  udyam_reg_no TEXT,        -- UAM/Udyam number from certificate
+  udyam_category TEXT,      -- 'micro','small','medium'
+  udyam_cert_doc_id UUID,   -- FK to documents table
+  registered_at DATE,
+  verified_at TIMESTAMPTZ,  -- when we confirmed validity
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE msme_payment_violations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  org_id UUID REFERENCES organizations(id),
+  client_id UUID REFERENCES clients(id),
+  vendor_id UUID REFERENCES msme_vendors(id),
+  invoice_id UUID REFERENCES transactions(id),
+  invoice_date DATE,
+  invoice_amount NUMERIC(15,2),
+  due_date DATE,  -- invoice_date + 45 days
+  payment_date DATE,
+  days_overdue INT,
+  disallowance_amount NUMERIC(15,2),
+  interest_amount NUMERIC(15,2),
+  fy TEXT,       -- '2024-25'
+  status TEXT DEFAULT 'open' -- open, cleared, reported
+);</div>
+</div>
+
+<div class="step">
+  <div class="sn">Step 2 — OCR Udyam certificate</div>
+  <div class="st">Auto-extract vendor MSME classification from uploaded certificates</div>
+  <div class="code">@celery_app.task(queue='ocr')
+def process_udyam_cert(document_id: str, client_id: str):
+    doc = db.query(Document).get(document_id)
+    # Use Azure OCR
+    result = run_azure_ocr(doc.s3_key)
+    text = result.content
+
+    # Extract Udyam fields with regex
+    udyam_no  = re.search(r'UDYAM-[A-Z]{2}-\d{2}-\d{7}', text)
+    category  = re.search(
+        r'(MICRO|SMALL|MEDIUM)\s+ENTERPRISE', text, re.I)
+    name_match= re.search(r'Name of Enterprise[:\s]+(.+)', text)
+    gstin_match=re.search(r'[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]',text)
+
+    if udyam_no and category:
+        vendor = db.query(MsmeVendor).filter(
+            MsmeVendor.org_id == doc.org_id,
+            MsmeVendor.vendor_gstin == (gstin_match.group() if gstin_match else None)
+        ).first() or MsmeVendor(org_id=doc.org_id, client_id=client_id)
+
+        vendor.udyam_reg_no   = udyam_no.group()
+        vendor.udyam_category = category.group(1).lower()
+        vendor.vendor_name    = name_match.group(1).strip() if name_match else ""
+        vendor.udyam_cert_doc_id = doc.id
+        vendor.verified_at    = datetime.now()
+        db.merge(vendor); db.commit()
+        # Now scan AP ledger for violations
+        scan_msme_violations.delay(str(vendor.id))</div>
+</div>
+
+<div class="step">
+  <div class="sn">Step 3 — 45-day violation scanner</div>
+  <div class="st">Cross-reference AP ledger against MSME vendor list</div>
+  <div class="code">@celery_app.task
+def scan_msme_violations(vendor_id: str):
+    vendor = db.query(MsmeVendor).get(vendor_id)
+    # Get all unpaid/late invoices for this MSME vendor
+    invoices = db.query(Transaction).filter(
+        Transaction.client_id == vendor.client_id,
+        Transaction.vendor_gstin == vendor.vendor_gstin,
+        Transaction.date >= date(date.today().year-1, 4, 1) # current FY
+    ).all()
+
+    for inv in invoices:
+        due_date = inv.date + timedelta(days=45)
+        payment  = get_payment_date(inv.id)  # from payment ledger
+
+        if payment is None or payment > due_date:
+            days_overdue = ((payment or date.today()) - due_date).days
+            disallowance = inv.amount  # full amount disallowed
+            # Interest u/s 16 of MSMED Act: 3x bank rate
+            interest = inv.amount * 0.045 * (days_overdue/365)
+
+            violation = MsmePaymentViolation(
+                org_id=vendor.org_id,
+                client_id=vendor.client_id,
+                vendor_id=vendor.id,
+                invoice_id=inv.id,
+                invoice_date=inv.date,
+                invoice_amount=inv.amount,
+                due_date=due_date,
+                payment_date=payment,
+                days_overdue=days_overdue,
+                disallowance_amount=disallowance,
+                interest_amount=round(interest,2),
+                fy=get_fy(inv.date)
+            )
+            db.merge(violation)
+    db.commit()
+
+def get_fy(dt: date) -> str:
+    y = dt.year if dt.month >= 4 else dt.year - 1
+    return f"{y}-{str(y+1)[-2:]}"</div>
+</div>
+
+<div class="step">
+  <div class="sn">Step 4 — Tax audit report auto-population</div>
+  <div class="st">Generate Clause 22 of Form 3CD from violation data</div>
+  <div class="code">def generate_clause_22_data(client_id: str, fy: str) -> dict:
+    """Clause 22 of Form 3CD: MSME disallowances u/s 43B(h)"""
+    violations = db.query(MsmePaymentViolation).filter(
+        MsmePaymentViolation.client_id == client_id,
+        MsmePaymentViolation.fy == fy,
+        MsmePaymentViolation.status == 'open'
+    ).all()
+
+    return {
+      "clause": "22 - Section 43B(h)",
+      "total_disallowance": sum(v.disallowance_amount for v in violations),
+      "total_interest":     sum(v.interest_amount for v in violations),
+      "vendor_count":       len(set(v.vendor_id for v in violations)),
+      "violations": [{
+        "vendor_name":    get_vendor_name(v.vendor_id),
+        "udyam_category": get_vendor(v.vendor_id).udyam_category,
+        "invoice_date":   str(v.invoice_date),
+        "due_date":       str(v.due_date),
+        "days_overdue":   v.days_overdue,
+        "disallowance":   float(v.disallowance_amount),
+        "interest":       float(v.interest_amount),
+      } for v in violations]
+    }</div>
+</div>
+<div class="ms"><h4>MSME milestone</h4><ul>
+  <li>Udyam cert OCR correctly classifies Micro vs Small</li>
+  <li>45-day scanner flags all violations in AP ledger</li>
+  <li>Clause 22 data auto-populates for tax audit report</li>
+  <li>WhatsApp alert to CA when new violation detected</li>
+</ul></div>
+</div>
+
+<!-- PANEL 2: Drawing Power -->
+<div class="panel" id="ph2">
+<p class="ptitle">Bank Drawing Power & Stock Statement engine</p>
+<p class="pdesc">Reads raw inventory + debtor ledgers, strips non-eligible items, applies bank-specific margin formulas, and generates monthly DP statements automatically. Replaces 4–6 hours of manual work per client per month.</p>
+
+<div class="step">
+  <div class="sn">Step 1 — DB tables</div>
+  <div class="st">Bank facility + DP configuration per client</div>
+  <div class="code">CREATE TABLE bank_facilities (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  client_id UUID REFERENCES clients(id),
+  bank_name TEXT,
+  facility_type TEXT DEFAULT 'CC', -- CC, OD, WCDL
+  sanctioned_limit NUMERIC(15,2),
+  -- Bank-specific margin rules (stored as JSON)
+  margin_rules JSONB,
+  -- Example margin_rules:
+  -- {"stock_margin":0.25, "debtor_margin":0.25,
+  --  "stock_age_cutoff_days":180,
+  --  "debtor_age_cutoff_days":90,
+  --  "creditor_deduction":true}
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE drawing_power_statements (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  client_id UUID REFERENCES clients(id),
+  facility_id UUID REFERENCES bank_facilities(id),
+  period TEXT, -- '2024-10'
+  gross_stock NUMERIC(15,2),
+  eligible_stock NUMERIC(15,2),
+  gross_debtors NUMERIC(15,2),
+  eligible_debtors NUMERIC(15,2),
+  creditors NUMERIC(15,2),
+  drawing_power NUMERIC(15,2),
+  doc_id UUID, -- generated PDF
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);</div>
+</div>
+
+<div class="step">
+  <div class="sn">Step 2 — Inventory aging analyzer</div>
+  <div class="st">Flag slow-moving and obsolete stock</div>
+  <div class="code">def analyze_stock_eligibility(inventory_df, rules: dict):
+    cutoff = rules.get('stock_age_cutoff_days', 180)
+    margin = rules.get('stock_margin', 0.25)
+
+    # Flag slow-moving: no movement in cutoff days
+    inventory_df['last_movement'] = pd.to_datetime(
+        inventory_df['last_movement_date'])
+    inventory_df['days_since_movement'] = (
+        pd.Timestamp.today() - inventory_df['last_movement']).dt.days
+
+    inventory_df['eligible'] = (
+        inventory_df['days_since_movement'] < cutoff)
+
+    gross_stock    = inventory_df['value'].sum()
+    eligible_stock = inventory_df[inventory_df['eligible']]['value'].sum()
+    stock_dp       = eligible_stock * (1 - margin)
+
+    slow_moving = inventory_df[~inventory_df['eligible']][[
+        'sku','description','value','days_since_movement']]
+
+    return {
+      "gross_stock": float(gross_stock),
+      "eligible_stock": float(eligible_stock),
+      "stock_dp": float(stock_dp),
+      "slow_moving_items": slow_moving.to_dict('records'),
+      "slow_moving_value": float(slow_moving['value'].sum())
+    }</div>
+</div>
+
+<div class="step">
+  <div class="sn">Step 3 — Debtor aging + 90-day predictor</div>
+  <div class="st">ML model predicts which debtors will cross 90 days</div>
+  <div class="code">def analyze_debtor_eligibility(debtors_df, rules: dict):
+    cutoff = rules.get('debtor_age_cutoff_days', 90)
+    margin = rules.get('debtor_margin', 0.25)
+
+    debtors_df['invoice_date'] = pd.to_datetime(
+        debtors_df['invoice_date'])
+    debtors_df['age_days'] = (
+        pd.Timestamp.today()-debtors_df['invoice_date']).dt.days
+
+    # Hard rule: already over 90 days = ineligible
+    debtors_df['eligible'] = debtors_df['age_days'] < cutoff
+
+    # Predictive flag: 60-90 days AND slow payer history
+    debtors_df['at_risk'] = (
+        (debtors_df['age_days'].between(60, 89)) &
+        (debtors_df['customer_avg_days_to_pay'] > 75)
+    )
+
+    gross    = debtors_df['outstanding'].sum()
+    eligible = debtors_df[debtors_df['eligible']]['outstanding'].sum()
+    debtor_dp= eligible * (1 - margin)
+    return {
+      "gross_debtors":    float(gross),
+      "eligible_debtors": float(eligible),
+      "debtor_dp":        float(debtor_dp),
+      "at_risk_count":    int(debtors_df['at_risk'].sum()),
+      "ineligible_value": float(
+          debtors_df[~debtors_df['eligible']]['outstanding'].sum())
+    }</div>
+</div>
+
+<div class="step">
+  <div class="sn">Step 4 — Drawing power computation + PDF</div>
+  <div class="code">def compute_drawing_power(client_id, facility_id, period):
+    facility = db.query(BankFacility).get(facility_id)
+    rules    = facility.margin_rules
+
+    stock_data  = analyze_stock_eligibility(get_inventory(client_id), rules)
+    debtor_data = analyze_debtor_eligibility(get_debtors(client_id), rules)
+    creditors   = get_creditors_current(client_id)
+
+    # Standard bank DP formula
+    dp = (stock_data['stock_dp'] + debtor_data['debtor_dp']
+          - (creditors if rules.get('creditor_deduction') else 0))
+    dp = min(dp, facility.sanctioned_limit)  # cap at sanctioned limit
+
+    stmt = DrawingPowerStatement(
+        client_id=client_id, facility_id=facility_id,
+        period=period, gross_stock=stock_data['gross_stock'],
+        eligible_stock=stock_data['eligible_stock'],
+        gross_debtors=debtor_data['gross_debtors'],
+        eligible_debtors=debtor_data['eligible_debtors'],
+        creditors=creditors, drawing_power=dp)
+    db.add(stmt); db.commit()
+    generate_dp_pdf.delay(str(stmt.id))
+    return dp</div>
+</div>
+</div>
+
+<!-- PANEL 3: CA Certificates -->
+<div class="panel" id="ph3">
+<p class="ptitle">CA Certificate auto-generator</p>
+<p class="pdesc">Client uploads balance sheets and ITR. System extracts net worth, turnover, and working capital figures, validates them against filing data, and produces a ready-to-sign certificate in ICAI format. Replaces 1–2 hours of manual compilation per certificate.</p>
+
+<div class="step">
+  <div class="sn">Step 1 — Certificate type registry</div>
+  <div class="st">Define the 6 most-requested certificate types as templates</div>
+  <div class="code">CERTIFICATE_TYPES = {
+  "net_worth": {
+    "title": "Certificate of Net Worth",
+    "fields": ["net_worth_fy1","net_worth_fy2","net_worth_fy3",
+               "tangible_net_worth","total_liabilities"],
+    "source_docs": ["balance_sheet","itr"],
+    "template": "templates/net_worth_cert.docx"
+  },
+  "turnover": {
+    "title": "Certificate of Turnover",
+    "fields": ["turnover_fy1","turnover_fy2","turnover_fy3",
+               "export_turnover"],
+    "source_docs": ["pnl","gstr9","itr"],
+    "template": "templates/turnover_cert.docx"
+  },
+  "working_capital": {
+    "title": "Working Capital Certificate",
+    "fields": ["current_assets","current_liabilities",
+               "net_working_capital","current_ratio"],
+    "source_docs": ["balance_sheet"],
+    "template": "templates/working_capital_cert.docx"
+  },
+  "end_use_of_funds": {
+    "title": "End Use of Funds Certificate",
+    "fields": ["loan_amount","utilization_details",
+               "balance_unspent"],
+    "source_docs": ["bank_statement","balance_sheet"],
+    "template": "templates/end_use_cert.docx"
+  }
+}</div>
+</div>
+
+<div class="step">
+  <div class="sn">Step 2 — LLM field extractor</div>
+  <div class="st">Extract financial figures from uploaded documents</div>
+  <div class="code">def extract_cert_fields(ocr_text: str,
+                         cert_type: str) -> dict:
+    fields = CERTIFICATE_TYPES[cert_type]['fields']
+    prompt = f"""Extract these financial figures from the document.
+Return ONLY valid JSON. If a field is not found, return null.
+Fields needed: {fields}
+
+Rules:
+- All amounts in Indian Rupees as numbers (no commas/symbols)
+- If multiple years found, return as list [fy1, fy2, fy3]
+- FY1 = most recent, FY3 = oldest
+- Compute derived fields (e.g. net_working_capital = current_assets - current_liabilities)
+
+Document text:
+{ocr_text[:4000]}"""
+
+    resp = anthropic.messages.create(
+        model="claude-sonnet-4-20250514", max_tokens=800,
+        messages=[{"role":"user","content":prompt}])
+    raw = resp.content[0].text
+    # Strip markdown fences if present
+    raw = re.sub(r'```json|```','',raw).strip()
+    return json.loads(raw)</div>
+</div>
+
+<div class="step">
+  <div class="sn">Step 3 — Cross-validation against ITR/GSTR data</div>
+  <div class="st">Verify extracted figures match official filings</div>
+  <div class="code">def validate_cert_figures(extracted: dict,
+                           client_id: str) -> dict:
+    issues = []
+    # Compare turnover with GSTR-9 annual return
+    if 'turnover_fy1' in extracted and extracted['turnover_fy1']:
+        gstr_turnover = get_gstr9_turnover(client_id)
+        if gstr_turnover:
+            variance_pct = abs(
+                extracted['turnover_fy1']-gstr_turnover
+            ) / gstr_turnover * 100
+            if variance_pct > 2:  # allow 2% rounding difference
+                issues.append({
+                  "field":"turnover_fy1",
+                  "extracted": extracted['turnover_fy1'],
+                  "gstr9_value": gstr_turnover,
+                  "variance_pct": round(variance_pct,1)
+                })
+    return {"valid": len(issues)==0, "issues": issues}</div>
+</div>
+
+<div class="step">
+  <div class="sn">Step 4 — DOCX certificate generation</div>
+  <div class="code">from docx import Document as DocxDoc
+from docx2pdf import convert
+
+def generate_certificate(cert_type, client_id,
+                          extracted_fields) -> str:
+    template_path = CERTIFICATE_TYPES[cert_type]['template']
+    doc = DocxDoc(template_path)
+    client = db.query(Client).get(client_id)
+    # Replace placeholders in template
+    replacements = {
+      "{{CLIENT_NAME}}":    client.name,
+      "{{CLIENT_GSTIN}}":   client.gstin or "",
+      "{{DATE}}":           datetime.now().strftime("%d %B %Y"),
+      **{f"{{{{{k}}}}}": f"₹{v:,.2f}" if isinstance(v,(int,float))
+         else str(v or "") for k,v in extracted_fields.items()}
+    }
+    for para in doc.paragraphs:
+        for key, val in replacements.items():
+            if key in para.text:
+                para.text = para.text.replace(key, val)
+    out_path = f"/tmp/{uuid4()}_certificate.docx"
+    doc.save(out_path)
+    s3_key = upload_to_s3_path(out_path)
+    return s3_key</div>
+</div>
+</div>
+
+<!-- PANEL 4: MCA Secretarial -->
+<div class="panel" id="ph4">
+<p class="ptitle">MCA & Company Secretarial document generator</p>
+<p class="pdesc">Voice notes or email transcripts from board meetings → formal board resolutions, AGM notices, and auto-filled MCA filing forms (MGT-14, AOC-4, MGT-7). Uses Pydantic schemas to guarantee legally compliant structure.</p>
+
+<div class="step">
+  <div class="sn">Step 1 — Pydantic schemas for all document types</div>
+  <div class="st">Define strict output schemas — the LLM must conform to these</div>
+  <div class="code">from pydantic import BaseModel, Field
+from typing import Optional, List
+from datetime import date
+
+class BoardResolution(BaseModel):
+    company_name: str
+    cin: str
+    meeting_date: date
+    meeting_type: str  # 'Board Meeting' | 'AGM' | 'EGM'
+    venue: str
+    chairman: str
+    directors_present: List[str]
+    directors_absent: List[str]
+    agenda_items: List[str]
+    resolutions: List[dict]  # [{number, title, text, passed_by}]
+    special_notes: Optional[str]
+
+class MGT7Data(BaseModel):
+    """Annual Return — MGT-7 key fields"""
+    company_name: str; cin: str; fy: str
+    registered_office: str
+    paid_up_capital: float
+    total_shareholders: int
+    directors: List[dict]  # [{name, din, designation}]
+    changes_in_directors: List[dict]
+
+class AOC4Data(BaseModel):
+    """Financial Statements filing — AOC-4"""
+    company_name: str; cin: str; fy: str
+    total_assets: float; total_liabilities: float
+    revenue: float; profit_after_tax: float
+    dividend_declared: bool
+    auditor_name: str; auditor_firm_regn: str</div>
+</div>
+
+<div class="step">
+  <div class="sn">Step 2 — Transcript → structured resolution</div>
+  <div class="st">LLM with schema constraint produces legally valid output</div>
+  <div class="code">def generate_board_minutes(transcript: str,
+                            company_data: dict) -> BoardResolution:
+    system = """You are a Company Secretary. Convert the meeting
+transcript into a formal Board Resolution.
+
+MANDATORY FORMAT RULES (Indian Companies Act 2013):
+1. Every resolution must start with "RESOLVED THAT"
+2. Ordinary resolutions: "passed with requisite majority"
+3. Special resolutions: "passed as a special resolution"
+4. Use formal legal language — no colloquial phrasing
+5. Include verbatim resolution text, not summaries
+
+Return ONLY valid JSON matching the BoardResolution schema.
+Do not add any text outside the JSON."""
+
+    resp = anthropic.messages.create(
+        model="claude-sonnet-4-20250514", max_tokens=3000,
+        system=system,
+        messages=[{"role":"user","content":
+            f"Company: {json.dumps(company_data)}\n\nTranscript:\n{transcript}"}])
+    raw  = resp.content[0].text
+    data = json.loads(re.sub(r'```json|```','',raw).strip())
+    return BoardResolution(**data)  # Pydantic validates schema</div>
+</div>
+
+<div class="step">
+  <div class="sn">Step 3 — Auto-fill MGT-14 filing form</div>
+  <div class="st">Map resolution data → MGT-14 XML schema for MCA portal</div>
+  <div class="code">def generate_mgt14_xml(resolution: BoardResolution,
+                        company: dict) -> str:
+    """MGT-14: Filing of resolutions with ROC"""
+    # Resolutions requiring MGT-14: special resolutions,
+    # certain board decisions, changes to M&A, etc.
+    xml_template = f"""<?xml version="1.0" encoding="UTF-8"?>
+<MGT14>
+  <CompanyDetails>
+    <CIN>{company['cin']}</CIN>
+    <CompanyName>{company['name']}</CompanyName>
+  </CompanyDetails>
+  <FilingDetails>
+    <MeetingDate>{resolution.meeting_date}</MeetingDate>
+    <MeetingType>{resolution.meeting_type}</MeetingType>
+    {"".join(f'''<Resolution>
+      <SerialNo>{i+1}</SerialNo>
+      <ResolutionType>{"Special" if "special resolution" in r["text"].lower() else "Ordinary"}</ResolutionType>
+      <ResolutionText>{r["text"]}</ResolutionText>
+    </Resolution>''' for i,r in enumerate(resolution.resolutions))}
+  </FilingDetails>
+</MGT14>"""
+    return xml_template</div>
+</div>
+</div>
+
+<!-- PANEL 5: Lease Intelligence -->
+<div class="panel" id="ph5">
+<p class="ptitle">Lease intelligence — Ind AS 116 / IFRS 16</p>
+<p class="pdesc">Reads 50-page lease agreements using NER + long-context RAG to extract all financial variables — start dates, rent-free periods, escalation clauses, termination options — and computes the full ROU asset and lease liability amortization schedule automatically.</p>
+
+<div class="step">
+  <div class="sn">Step 1 — Lease extraction with NER + LLM</div>
+  <div class="st">Extract all key lease variables from PDF contracts</div>
+  <div class="code">LEASE_EXTRACTION_PROMPT = """You are a financial accountant
+specializing in Ind AS 116 / IFRS 16 lease accounting.
+
+Extract ALL lease variables from the contract. Return ONLY JSON:
+{
+  "commencement_date": "YYYY-MM-DD",
+  "lease_term_months": <integer>,
+  "base_rent_monthly": <number in INR>,
+  "rent_free_period_months": <integer or 0>,
+  "security_deposit": <number>,
+  "escalation_clauses": [
+    {"effective_from_month": <int>, "rate_pct": <float>,
+     "type": "fixed|CPI|negotiated"}
+  ],
+  "renewal_options": [
+    {"term_months": <int>, "rent_monthly": <float>, "notice_days": <int>}
+  ],
+  "termination_option": {"earliest_month": <int>, "penalty": <float>},
+  "incremental_borrowing_rate_pct": <float or null>,
+  "lease_payments_schedule": [
+    {"month": <int>, "payment": <float>}  // expand all months
+  ]
+}"""
+
+def extract_lease_data(pdf_text: str) -> dict:
+    resp = anthropic.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=4000, system=LEASE_EXTRACTION_PROMPT,
+        messages=[{"role":"user","content":
+            f"Contract (extract all financial terms):\n{pdf_text[:8000]}"}])
+    raw = re.sub(r'```json|```','',resp.content[0].text).strip()
+    return json.loads(raw)</div>
+</div>
+
+<div class="step">
+  <div class="sn">Step 2 — Ind AS 116 amortization schedule</div>
+  <div class="st">Compute full ROU asset depreciation + lease liability schedule</div>
+  <div class="code">import numpy as np
+
+def compute_ind_as_116_schedule(lease: dict) -> list:
+    ibr      = lease['incremental_borrowing_rate_pct'] / 100 / 12
+    payments = [p['payment'] for p in lease['lease_payments_schedule']]
+    n        = len(payments)
+
+    # PV of lease payments = initial lease liability
+    pv_factors   = [(1/(1+ibr))**(i+1) for i in range(n)]
+    lease_liab_0 = sum(p*f for p,f in zip(payments, pv_factors))
+    rou_asset_0  = lease_liab_0  # simplified: no initial direct costs
+
+    schedule = []
+    lease_liab = lease_liab_0
+    rou_asset  = rou_asset_0
+    monthly_depreciation = rou_asset_0 / n
+
+    for i, payment in enumerate(payments):
+        interest_exp  = lease_liab * ibr
+        principal_red = payment - interest_exp
+        lease_liab   -= principal_red
+        rou_asset    -= monthly_depreciation
+        schedule.append({
+          "month":         i+1,
+          "payment":       round(payment,2),
+          "interest_exp":  round(interest_exp,2),
+          "principal":     round(principal_red,2),
+          "lease_liability":round(max(lease_liab,0),2),
+          "rou_asset":     round(max(rou_asset,0),2),
+        })
+    return schedule</div>
+</div>
+
+<div class="dd">
+  <div class="ddc" style="border-color:var(--color-border-warning)"><h4 style="color:var(--color-text-warning)">Watch out for</h4><ul><li>Variable lease payments — extract carefully</li><li>Escalation clauses buried in annexures</li><li>Lease modifications requiring remeasurement</li><li>Always get CA to verify extracted IBR</li></ul></div>
+  <div class="ddc" style="border-color:var(--color-border-success)"><h4 style="color:var(--color-text-success)">Do</h4><ul><li>Show extracted values before computing schedule</li><li>Allow manual override of any field</li><li>Flag where IBR was assumed vs stated</li><li>Export schedule as Excel (not just PDF)</li></ul></div>
+</div>
+</div>
+
+<!-- PANEL 6: RFP Generator -->
+<div class="panel" id="ph6">
+<p class="ptitle">Audit bid & RFP auto-generator</p>
+<p class="pdesc">CA firm uploads an RFP (government/PSU/corporate). System checks the firm's credential database, verifies eligibility criteria are met, and auto-generates a customized technical bid proposal. Turns 3 days of bid writing into 2 hours of review.</p>
+
+<div class="step">
+  <div class="sn">Step 1 — Firm credential database (one-time setup)</div>
+  <div class="code">CREATE TABLE firm_credentials (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  org_id UUID REFERENCES organizations(id),
+  -- Firm profile
+  firm_name TEXT, icai_regn_no TEXT,
+  founding_year INT,
+  hq_city TEXT, hq_state TEXT,
+  -- Partner details
+  partners JSONB, -- [{name, membership_no, experience_years, specializations[]}]
+  -- Capacity metrics
+  article_clerks INT, total_staff INT,
+  -- Financial metrics (updated annually)
+  gross_fee_receipts_fy1 NUMERIC(15,2),
+  gross_fee_receipts_fy2 NUMERIC(15,2),
+  gross_fee_receipts_fy3 NUMERIC(15,2),
+  -- Industry experience
+  industries_served JSONB, -- [{industry, client_count, years}]
+  -- Past engagements (anonymized)
+  key_engagements JSONB,
+  -- Certifications
+  peer_review_status TEXT,
+  quality_review_date DATE,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);</div>
+</div>
+
+<div class="step">
+  <div class="sn">Step 2 — RFP eligibility checker</div>
+  <div class="st">Agentic RAG reads RFP, checks against credential DB</div>
+  <div class="code">def check_rfp_eligibility(rfp_text: str,
+                           org_id: str) -> dict:
+    creds = db.query(FirmCredentials).filter(
+        FirmCredentials.org_id == org_id).first()
+
+    prompt = f"""Read this RFP and extract all ELIGIBILITY CRITERIA.
+Then check each criterion against the FIRM CREDENTIALS provided.
+Return JSON:
+{{
+  "criteria": [
+    {{
+      "criterion": <string>,
+      "required_value": <string>,
+      "firm_value": <string>,
+      "eligible": <bool>,
+      "gap": <string or null>
+    }}
+  ],
+  "overall_eligible": <bool>,
+  "disqualifying_gaps": [<string>],
+  "recommended_approach": <string>
+}}
+
+RFP TEXT (first 6000 chars):
+{rfp_text[:6000]}
+
+FIRM CREDENTIALS:
+{json.dumps(creds.__dict__, default=str)}"""
+
+    resp = anthropic.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=2000,
+        messages=[{"role":"user","content":prompt}])
+    return json.loads(
+        re.sub(r'```json|```','',resp.content[0].text).strip())</div>
+</div>
+
+<div class="step">
+  <div class="sn">Step 3 — Technical bid proposal generator</div>
+  <div class="code">def generate_bid_proposal(rfp_text: str,
+                           eligibility: dict,
+                           creds: dict) -> str:
+    if not eligibility['overall_eligible']:
+        return None  # Don't generate if firm is not eligible
+
+    prompt = f"""You are writing a technical audit bid proposal
+for a CA firm responding to this RFP.
+
+FIRM CREDENTIALS: {json.dumps(creds, default=str)}
+ELIGIBILITY CHECK: {json.dumps(eligibility)}
+RFP SUMMARY: {rfp_text[:3000]}
+
+Generate a formal technical bid with these sections:
+1. Executive Summary (firm overview, key strengths)
+2. Understanding of the Assignment (what the RFP requires)
+3. Approach & Methodology (how you'll conduct the audit)
+4. Team Composition (match partner profiles to RFP requirements)
+5. Relevant Experience (past engagements matching this sector)
+6. Quality Assurance Framework (peer review, quality review status)
+
+Use formal language. Reference specific credentials from the firm data.
+Do not invent experience or credentials not in the provided data."""
+
+    resp = anthropic.messages.create(
+        model="claude-sonnet-4-20250514", max_tokens=4000,
+        messages=[{"role":"user","content":prompt}])
+    return resp.content[0].text</div>
+</div>
+</div>
+
+<!-- PANEL 7: Timesheet Auditor -->
+<div class="panel" id="ph7">
+<p class="ptitle">Article clerk timesheet auditor</p>
+<p class="pdesc">Analyzes actual output data (document uploads, task completion timestamps, email patterns) instead of trusting manual timesheet entries. Flags unbillable time, identifies bottlenecks, and computes true per-client profitability for the CA firm.</p>
+
+<div class="step">
+  <div class="sn">Step 1 — Activity log table</div>
+  <div class="code">CREATE TABLE user_activity_log (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  org_id UUID REFERENCES organizations(id),
+  user_id UUID REFERENCES users(id),
+  client_id UUID REFERENCES clients(id),
+  activity_type TEXT,
+  -- upload, reconciliation_run, notice_draft, export,
+  -- document_review, query_run, certificate_gen
+  duration_seconds INT,  -- computed from start/end events
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE timesheet_entries (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  org_id UUID REFERENCES organizations(id),
+  user_id UUID REFERENCES users(id),
+  client_id UUID REFERENCES clients(id),
+  date DATE,
+  hours_logged NUMERIC(4,2),
+  task_description TEXT,
+  billable BOOLEAN DEFAULT TRUE
+);</div>
+</div>
+
+<div class="step">
+  <div class="sn">Step 2 — Activity classifier</div>
+  <div class="st">Classify actual platform activities into billable task types</div>
+  <div class="code">ACTIVITY_BILLING_MAP = {
+  'reconciliation_run':  {'type':'GST Work',     'billable':True},
+  'notice_draft':        {'type':'Tax Advisory',  'billable':True},
+  'certificate_gen':     {'type':'Certificate',   'billable':True},
+  'document_review':     {'type':'Audit Work',    'billable':True},
+  'export':              {'type':'Report Prep',   'billable':True},
+  'upload':              {'type':'Admin',         'billable':False},
+  'query_run':           {'type':'Analysis',      'billable':True},
+}
+
+def compute_client_profitability(client_id: str,
+                                  month: str) -> dict:
+    activities = db.query(UserActivityLog).filter(
+        UserActivityLog.client_id == client_id,
+        func.to_char(UserActivityLog.created_at,'YYYY-MM') == month
+    ).all()
+
+    total_seconds  = sum(a.duration_seconds or 0 for a in activities)
+    billable_secs  = sum(
+        a.duration_seconds or 0 for a in activities
+        if ACTIVITY_BILLING_MAP.get(
+            a.activity_type,{}).get('billable'))
+
+    # Compare against manually logged timesheets
+    logged_hours = db.query(
+        func.sum(TimesheetEntry.hours_logged)
+    ).filter(TimesheetEntry.client_id == client_id).scalar() or 0
+
+    return {
+      "actual_hours":   round(total_seconds/3600, 2),
+      "logged_hours":   float(logged_hours),
+      "billable_hours": round(billable_secs/3600, 2),
+      "variance_hours": round(total_seconds/3600 - float(logged_hours), 2),
+      "utilization_pct":round(billable_secs/max(total_seconds,1)*100,1),
+      "task_breakdown": compute_task_breakdown(activities)
+    }</div>
+</div>
+
+<div class="step">
+  <div class="sn">Step 3 — Partner profitability dashboard</div>
+  <div class="sb2">Shows each partner which clients are over-serviced (actual hours far exceed billed hours), which article clerks are most efficient, and which engagements are running at a loss. Pure SQL analytics — no ML needed.</div>
+  <div class="code">-- Partner dashboard query
+SELECT
+  c.name AS client,
+  SUM(al.duration_seconds)/3600.0 AS actual_hours,
+  SUM(te.hours_logged) AS billed_hours,
+  SUM(te.hours_logged) * 1500 AS revenue_at_1500,  -- avg billing rate
+  SUM(al.duration_seconds)/3600.0 * 800 AS cost_at_800,-- avg cost/hr
+  (SUM(te.hours_logged)*1500 - SUM(al.duration_seconds)/3600.0*800)
+    AS margin
+FROM user_activity_log al
+JOIN clients c ON c.id = al.client_id
+LEFT JOIN timesheet_entries te ON te.client_id = al.client_id
+  AND te.user_id = al.user_id
+WHERE al.org_id = :oid
+  AND to_char(al.created_at,'YYYY-MM') = :month
+GROUP BY c.name
+ORDER BY margin ASC; -- worst margin clients first</div>
+</div>
+<div class="ms"><h4>All 7 new modules — combined milestone</h4><ul>
+  <li>MSME: violations detected before tax audit — no manual scan needed</li>
+  <li>DP: monthly statement generates in 2 min vs 4 hours manually</li>
+  <li>Certificates: ready-to-sign in under 5 minutes</li>
+  <li>MCA: board minutes draft in ICAI format from raw transcript</li>
+  <li>Lease: full ROU + liability schedule from PDF contract</li>
+  <li>RFP: eligibility check + bid in under 30 minutes</li>
+  <li>Timesheet: actual vs logged hours visible per client per month</li>
+</ul></div>
+</div>
+
+<div class="nav">
+  <button onclick="prev()" id="bp" style="font-size:11px;padding:5px 12px;cursor:pointer">Previous</button>
+  <span id="pc">Module 1 of 8</span>
+  <button onclick="nxt()" id="bn" style="font-size:11px;padding:5px 12px;cursor:pointer">Next</button>
+</div>
+</div>
+</div>
+
+<script>
+let cur=0,tot=8;
+function go(n){
+  document.querySelectorAll('.panel').forEach((p,i)=>p.classList.toggle('on',i===n));
+  document.querySelectorAll('.pbtn').forEach((b,i)=>b.classList.toggle('on',i===n));
+  document.getElementById('pf').style.width=Math.round((n+1)/tot*100)+'%';
+  document.getElementById('pc').textContent='Module '+(n+1)+' of '+tot;
+  document.getElementById('bp').disabled=n===0;
+  document.getElementById('bn').disabled=n===tot-1;
+  document.querySelector('.main').scrollTop=0;
+  cur=n;
+}
+function nxt(){if(cur<tot-1)go(cur+1);}
+function prev(){if(cur>0)go(cur-1);}
+go(0);
+</script>
