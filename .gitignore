@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Celery/runtime state
+celerybeat-schedule
+celerybeat-schedule.*
+*.pid
+
+# Node/Next.js
+node_modules/
+.next/
+out/
+dist/
+coverage/
+
+# Playwright
+test-results/
+playwright-report/
+
+# Local environments and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.log
