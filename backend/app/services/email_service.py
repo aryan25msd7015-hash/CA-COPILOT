@@ -1,11 +1,18 @@
-"""Transactional email delivery for auth and account workflows."""
+"""Transactional email delivery for auth and account workflows.
+
+For Resend delivery (preferred), see `app/services/resend_service.py`. When the
+Resend API key is set (and not a placeholder), the send helpers below route
+through Resend's HUD-branded templates instead of legacy SMTP.
+"""
 from __future__ import annotations
 
+import asyncio
 import smtplib
 from email.message import EmailMessage
 from email.utils import formataddr, parseaddr
 
 from app.config import settings
+from app.services import resend_service as rs
 
 
 class EmailDeliveryError(RuntimeError):
@@ -13,6 +20,13 @@ class EmailDeliveryError(RuntimeError):
 
 
 def email_provider_status() -> dict:
+    if _resend_active():
+        return {
+            "provider": "resend",
+            "configured": True,
+            "mode": "resend_dry_run" if rs._dry_run() else "resend",
+            "from": rs._from_address(),
+        }
     configured = _smtp_configured()
     provider = settings.EMAIL_PROVIDER.lower()
     return {
@@ -23,13 +37,54 @@ def email_provider_status() -> dict:
     }
 
 
+def _resend_active() -> bool:
+    """True if Resend is configured OR intentionally in dry-run mode."""
+    key = (settings.RESEND_API_KEY or "").strip()
+    return bool(key) or bool(getattr(settings, "RESEND_DRY_RUN", False))
+
+
+def _send_resend(*, template: str, to_email: str, context: dict) -> dict:
+    """Blocking wrapper around the async resend send helper so the existing
+    email_service call-sites (which are synchronous) can continue to work."""
+    try:
+        result = asyncio.run(rs.send_email(
+            to=to_email, template=template, context=context,
+        ))
+    except RuntimeError:
+        # If we're already inside a running loop, hop threads.
+        loop = asyncio.new_event_loop()
+        try:
+            result = loop.run_until_complete(rs.send_email(
+                to=to_email, template=template, context=context,
+            ))
+        finally:
+            loop.close()
+    return {
+        "delivered": not result.dry_run,
+        "mode": "resend_dry_run" if result.dry_run else "resend",
+        "message_id": result.id,
+        "template": result.template,
+    }
+
+
 def assert_email_ready_for_production() -> None:
-    if settings.ENV == "production" and not _smtp_configured():
-        raise EmailDeliveryError("Email delivery is not configured")
+    if settings.ENV == "production":
+        if _resend_active() and not rs._dry_run():
+            return
+        if not _smtp_configured():
+            raise EmailDeliveryError("Email delivery is not configured")
 
 
 def send_password_reset_email(to_email: str, token: str) -> dict:
     link = f"{settings.FRONTEND_URL.rstrip('/')}/reset-password?token={token}"
+    if _resend_active():
+        return _send_resend(template="password_reset", to_email=to_email, context={
+            "cta_url": link,
+            "meta": [
+                ("Recipient", to_email),
+                ("Expires in", f"{settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES} minutes"),
+            ],
+        })
     subject = "Reset your CA Copilot password"
     text = (
         "We received a request to reset your CA Copilot password.\n\n"
@@ -49,6 +104,14 @@ def send_password_reset_email(to_email: str, token: str) -> dict:
 
 def send_email_verification_email(to_email: str, token: str) -> dict:
     link = f"{settings.FRONTEND_URL.rstrip('/')}/verify-email?token={token}"
+    if _resend_active():
+        return _send_resend(template="email_verification", to_email=to_email, context={
+            "cta_url": link,
+            "meta": [
+                ("Recipient", to_email),
+                ("Expires in", f"{settings.EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS} hours"),
+            ],
+        })
     subject = "Verify your CA Copilot email"
     text = (
         "Please verify this email address for CA Copilot.\n\n"

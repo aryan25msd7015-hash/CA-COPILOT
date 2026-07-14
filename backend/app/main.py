@@ -16,7 +16,7 @@ from app.routers import (
     anomalies, audit_papers, auth, autopilot, benchmarking, clients, deadlines, documents, events,
     diagnostics, health_scores, integrations, invoices, notices, organizations, query, reconciliation,
     tasks, users, whatsapp, extensions, practice_ops, razorpay as razorpay_router,
-    google_auth as google_auth_router,
+    google_auth as google_auth_router, email as email_router,
 )
 from app.services.observability import configure_observability, record_request, render_metrics
 from app.utils.security import client_ip, rate_limit_policy, rate_limiter
@@ -118,6 +118,7 @@ ROUTERS = [
     (practice_ops.router, "", "practice-operations"),
     (razorpay_router.router, "/razorpay", "razorpay"),
     (google_auth_router.router, "/auth/google", "google-auth"),
+    (email_router.router, "/email", "email"),
 ]
 for router, prefix, tag in ROUTERS:
     app.include_router(router, prefix=prefix, tags=[tag])

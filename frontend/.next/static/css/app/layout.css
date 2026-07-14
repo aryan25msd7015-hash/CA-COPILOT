@@ -926,6 +926,9 @@ video {
 .max-w-xl {
   max-width: 36rem;
 }
+.max-w-\[26vw\] {
+  max-width: 26vw;
+}
 .flex-1 {
   flex: 1 1 0%;
 }
@@ -1919,6 +1922,9 @@ video {
 }
 .tracking-wide {
   letter-spacing: 0.025em;
+}
+.tracking-\[0\.15em\] {
+  letter-spacing: 0.15em;
 }
 .text-amber-200 {
   --tw-text-opacity: 1;

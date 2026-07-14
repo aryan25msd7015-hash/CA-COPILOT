@@ -59,6 +59,13 @@ class Settings(BaseSettings):
     GOOGLE_SIGNUP_MODE: str = "auto_pending"       # invited_only | auto_pending | auto_partner
     GOOGLE_ALLOWED_DOMAINS: str = ""               # comma-separated; empty = anyone
 
+    # Resend transactional email
+    RESEND_API_KEY: str = ""
+    RESEND_FROM_EMAIL: str = "onboarding@resend.dev"
+    RESEND_FROM_NAME: str = "CA Copilot"
+    RESEND_WEBHOOK_SECRET: str = ""
+    RESEND_DRY_RUN: bool = False
+
     # Observability
     SENTRY_DSN: str = ""
     SENTRY_TRACES_SAMPLE_RATE: float = 0.1

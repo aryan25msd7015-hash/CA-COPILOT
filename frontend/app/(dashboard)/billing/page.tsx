@@ -7,6 +7,7 @@ import { Client } from '@/types';
 import ClientSelect from '@/components/shared/ClientSelect';
 import StatusBadge from '@/components/shared/StatusBadge';
 import PaymentsTab from '@/components/billing/PaymentsTab';
+import EmailSignalsTab from '@/components/email/EmailSignalsTab';
 
 interface BillingOverview {
   invoice_count: number;
@@ -72,7 +73,7 @@ function money(value: number) {
 }
 
 export default function BillingPage() {
-  const [tab, setTab] = useState<'operations' | 'payments'>('operations');
+  const [tab, setTab] = useState<'operations' | 'payments' | 'email'>('operations');
   const [invoiceFilters, setInvoiceFilters] = useState({ status: 'draft,sent,part_paid,overdue', client_id: '', due_to: '' });
   const [planClientId, setPlanClientId] = useState('');
   const [paymentClientId, setPaymentClientId] = useState('');
@@ -208,7 +209,7 @@ export default function BillingPage() {
           </p>
         </div>
         <div className="inline-flex rounded-xl border border-line bg-[rgba(9,14,32,0.55)] p-1" data-testid="billing-tabs">
-          {(['operations', 'payments'] as const).map(t => (
+          {(['operations', 'payments', 'email'] as const).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -219,13 +220,14 @@ export default function BillingPage() {
                   : 'text-fg-2 hover:text-fg'
               }`}
             >
-              {t === 'operations' ? 'Operations' : 'Payments · Razorpay'}
+              {t === 'operations' ? 'Operations' : t === 'payments' ? 'Payments · Razorpay' : 'Email · Resend'}
             </button>
           ))}
         </div>
       </div>
 
       {tab === 'payments' && <PaymentsTab invoices={invoices.data || []} />}
+      {tab === 'email' && <EmailSignalsTab />}
       {tab === 'operations' && (
         <>
       <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">

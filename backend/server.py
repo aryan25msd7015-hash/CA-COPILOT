@@ -491,6 +491,89 @@ def rz_sub_cancel(sid: str):
     return {"ok": True, "id": sid, "status": "cancelled"}
 
 # ---------------------------------------------------------------------------
+# Resend — preview stub
+# ---------------------------------------------------------------------------
+
+_EMAIL_LOG: List[Dict[str, Any]] = []
+_EMAIL_TEMPLATES = [
+    "password_reset", "email_verification", "user_invitation",
+    "invoice_sent", "payment_received", "invoice_overdue",
+    "subscription_activated", "subscription_cancelled",
+    "document_request", "portal_invite", "report_ready",
+]
+
+def _seed_email_log():
+    if _EMAIL_LOG:
+        return
+    for i in range(18):
+        seed = random.Random(i + 41)
+        tpl = seed.choice(_EMAIL_TEMPLATES)
+        _EMAIL_LOG.append({
+            "id": f"em-{i:04d}",
+            "resend_message_id": f"re_{seed.randbytes(8).hex()}",
+            "template": tpl,
+            "recipient": f"contact.{i}@{seed.choice(['aurora','helix','arcadia','lumen'])}.in",
+            "subject": {
+                "password_reset": "Reset your CA Copilot access key",
+                "email_verification": "Verify your CA Copilot email",
+                "user_invitation": "You've been invited to Nova & Partners on CA Copilot",
+                "invoice_sent": f"Invoice INV-2026-{1000 + i} · ₹{seed.randint(15, 250) * 1000:,}",
+                "payment_received": f"Payment received · ₹{seed.randint(15, 250) * 1000:,}",
+                "invoice_overdue": f"Reminder · Invoice INV-2026-{1000 + i} overdue",
+                "subscription_activated": "Your CA Copilot Pro subscription is live",
+                "subscription_cancelled": "Your CA Copilot subscription is scheduled to end",
+                "document_request": "New document request · Aurora Textiles",
+                "portal_invite": "You've been invited to your CA's secure portal",
+                "report_ready": "Your CA report is ready · GST reconciliation · Dec 2025",
+            }.get(tpl, "CA Copilot notification"),
+            "status": seed.choice(["delivered", "delivered", "delivered", "sent", "bounced", "delayed"]),
+            "dry_run": True,
+            "created_at": (datetime.now(timezone.utc) - timedelta(minutes=seed.randint(2, 4800))).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "tags": {"template": tpl, "org_id": "org-demo-001"},
+        })
+
+@app.get("/api/email/config")
+def email_config():
+    return {
+        "provider": "resend",
+        "dry_run": True,
+        "from": "CA Copilot <onboarding@resend.dev>",
+        "webhook_configured": False,
+        "preview_stub": True,
+    }
+
+@app.get("/api/email/recent")
+def email_recent():
+    _seed_email_log()
+    return sorted(_EMAIL_LOG, key=lambda r: r["created_at"], reverse=True)
+
+@app.post("/api/email/test-send")
+async def email_test_send(request: Request):
+    body = await request.json()
+    _seed_email_log()
+    row = {
+        "id": f"em-test-{len(_EMAIL_LOG) + 1:04d}",
+        "resend_message_id": f"re_test_{random.randbytes(6).hex()}",
+        "template": body.get("template", "email_verification"),
+        "recipient": body.get("to", "test@example.com"),
+        "subject": f"Test signal · {body.get('template', 'email_verification')}",
+        "status": "delivered",
+        "dry_run": True,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "tags": {"template": body.get("template"), "org_id": "org-demo-001"},
+    }
+    _EMAIL_LOG.insert(0, row)
+    return {"ok": True, "id": row["id"], "dry_run": True, "template": row["template"], "subject": row["subject"]}
+
+@app.post("/api/email/webhook")
+async def email_webhook(request: Request):
+    # In the preview stub we do not verify signature — real backend does.
+    body = await request.json()
+    return {"ok": True, "event": body.get("type") or body.get("event") or "unknown", "preview_stub": True}
+
+# ---------------------------------------------------------------------------
 # Billing (used by the /billing page)
 # ---------------------------------------------------------------------------
 
