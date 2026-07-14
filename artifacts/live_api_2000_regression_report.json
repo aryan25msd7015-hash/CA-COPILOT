@@ -1,0 +1,190 @@
+{
+  "generated_at": "2026-06-25",
+  "base_url": "http://localhost:8000",
+  "cases": 2000,
+  "controlled_mutations": 3,
+  "summary": {
+    "clients": {
+      "cases": 67,
+      "passed": 67,
+      "failed": 0
+    },
+    "client_summary": {
+      "cases": 67,
+      "passed": 67,
+      "failed": 0
+    },
+    "client_health": {
+      "cases": 67,
+      "passed": 67,
+      "failed": 0
+    },
+    "documents": {
+      "cases": 67,
+      "passed": 67,
+      "failed": 0
+    },
+    "reconciliation_transactions": {
+      "cases": 67,
+      "passed": 67,
+      "failed": 0
+    },
+    "reconciliation_config": {
+      "cases": 67,
+      "passed": 67,
+      "failed": 0
+    },
+    "deadlines": {
+      "cases": 67,
+      "passed": 67,
+      "failed": 0
+    },
+    "calendar_overview": {
+      "cases": 67,
+      "passed": 67,
+      "failed": 0
+    },
+    "msme_overview": {
+      "cases": 67,
+      "passed": 67,
+      "failed": 0
+    },
+    "msme_vendors": {
+      "cases": 67,
+      "passed": 67,
+      "failed": 0
+    },
+    "drawing_power_overview": {
+      "cases": 67,
+      "passed": 67,
+      "failed": 0
+    },
+    "certificates_overview": {
+      "cases": 67,
+      "passed": 67,
+      "failed": 0
+    },
+    "secretarial_overview": {
+      "cases": 67,
+      "passed": 67,
+      "failed": 0
+    },
+    "leases_overview": {
+      "cases": 67,
+      "passed": 67,
+      "failed": 0
+    },
+    "timesheets_overview": {
+      "cases": 67,
+      "passed": 67,
+      "failed": 0
+    },
+    "rfp_overview": {
+      "cases": 67,
+      "passed": 67,
+      "failed": 0
+    },
+    "autopilot_overview": {
+      "cases": 67,
+      "passed": 67,
+      "failed": 0
+    },
+    "autopilot_exceptions": {
+      "cases": 67,
+      "passed": 67,
+      "failed": 0
+    },
+    "whatsapp_status": {
+      "cases": 67,
+      "passed": 67,
+      "failed": 0
+    },
+    "anomalies_summary": {
+      "cases": 67,
+      "passed": 67,
+      "failed": 0
+    },
+    "invoices_fraud_summary": {
+      "cases": 66,
+      "passed": 66,
+      "failed": 0
+    },
+    "query_starters": {
+      "cases": 66,
+      "passed": 66,
+      "failed": 0
+    },
+    "query_saved": {
+      "cases": 66,
+      "passed": 66,
+      "failed": 0
+    },
+    "work_overview": {
+      "cases": 66,
+      "passed": 66,
+      "failed": 0
+    },
+    "billing_overview": {
+      "cases": 66,
+      "passed": 66,
+      "failed": 0
+    },
+    "portal_overview": {
+      "cases": 66,
+      "passed": 66,
+      "failed": 0
+    },
+    "team_overview": {
+      "cases": 66,
+      "passed": 66,
+      "failed": 0
+    },
+    "vault_overview": {
+      "cases": 66,
+      "passed": 66,
+      "failed": 0
+    },
+    "imports_overview": {
+      "cases": 66,
+      "passed": 66,
+      "failed": 0
+    },
+    "reports_overview": {
+      "cases": 66,
+      "passed": 66,
+      "failed": 0
+    }
+  },
+  "mutations": [
+    {
+      "name": "invalid_msme_gstin",
+      "status": 422,
+      "expected": 422,
+      "passed": true
+    },
+    {
+      "name": "invalid_activity",
+      "status": 422,
+      "expected": 422,
+      "passed": true
+    },
+    {
+      "name": "valid_query",
+      "status": 200,
+      "expected": 200,
+      "passed": true
+    }
+  ],
+  "failures": [],
+  "failure_count": 0,
+  "latency_ms": {
+    "min": 12.02,
+    "max": 500.58,
+    "avg": 32.25
+  },
+  "overall": {
+    "cases": 2003,
+    "passed": 2003,
+    "failed": 0
+  }
+}

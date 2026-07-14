@@ -1,0 +1,412 @@
+{
+  "run_id": "20260619050802",
+  "companies_requested": 2000,
+  "created": {
+    "clients": 2000,
+    "documents": 4000,
+    "transactions": 4000,
+    "deadlines": 2000,
+    "calendar_items": 2000,
+    "practice_tasks": 2000,
+    "invoices": 2000,
+    "portal_requests": 2000,
+    "msme_vendors": 2000,
+    "msme_violations": 2000,
+    "certificates": 2000,
+    "secretarial_documents": 2000,
+    "leases": 2000,
+    "timesheets": 2000,
+    "anomaly_flags": 2000,
+    "autopilot_exceptions": 2000,
+    "autopilot_sync_runs": 2000,
+    "whatsapp_reminders": 2000,
+    "billing_plans": 2000,
+    "portal_contacts": 2000,
+    "vault_items": 2000,
+    "import_jobs": 2000
+  },
+  "failure_count": 0,
+  "gap_count": 0,
+  "failures": [],
+  "scale_gaps": [],
+  "slowest": [
+    {
+      "feature": "seed synthetic data",
+      "seconds": 7.155
+    },
+    {
+      "feature": "api feature tests",
+      "seconds": 4.798
+    },
+    {
+      "feature": "GET /whatsapp/status",
+      "seconds": 1.155
+    },
+    {
+      "feature": "setup tenant",
+      "seconds": 0.881
+    },
+    {
+      "feature": "auth and organization tests",
+      "seconds": 0.675
+    },
+    {
+      "feature": "GET /billing/invoices",
+      "seconds": 0.232
+    },
+    {
+      "feature": "GET /timesheets/profitability?month=2026-06",
+      "seconds": 0.19
+    },
+    {
+      "feature": "GET /autopilot/overview?auto_refresh=false",
+      "seconds": 0.182
+    },
+    {
+      "feature": "GET /billing/plans",
+      "seconds": 0.17
+    },
+    {
+      "feature": "GET /reports/overview",
+      "seconds": 0.16
+    },
+    {
+      "feature": "POST /whatsapp/consent-link/cc23545c-6053-4e8b-82e0-23300af863b9",
+      "seconds": 0.151
+    },
+    {
+      "feature": "GET /portal/requests",
+      "seconds": 0.134
+    },
+    {
+      "feature": "GET /notices",
+      "seconds": 0.13
+    },
+    {
+      "feature": "GET /calendar/GSTR3B/2026-06/clients",
+      "seconds": 0.128
+    },
+    {
+      "feature": "GET /clients",
+      "seconds": 0.122
+    },
+    {
+      "feature": "GET /work/tasks",
+      "seconds": 0.114
+    },
+    {
+      "feature": "GET /vault/items",
+      "seconds": 0.113
+    },
+    {
+      "feature": "GET /msme/violations",
+      "seconds": 0.112
+    },
+    {
+      "feature": "GET /benchmarking/cc23545c-6053-4e8b-82e0-23300af863b9",
+      "seconds": 0.091
+    },
+    {
+      "feature": "POST /vault/items",
+      "seconds": 0.091
+    }
+  ],
+  "timings": [
+    {
+      "feature": "setup tenant",
+      "seconds": 0.881
+    },
+    {
+      "feature": "seed synthetic data",
+      "seconds": 7.155
+    },
+    {
+      "feature": "auth and organization tests",
+      "seconds": 0.675
+    },
+    {
+      "feature": "GET /organizations/me",
+      "seconds": 0.01
+    },
+    {
+      "feature": "GET /users",
+      "seconds": 0.009
+    },
+    {
+      "feature": "GET /clients",
+      "seconds": 0.122
+    },
+    {
+      "feature": "GET /clients/cc23545c-6053-4e8b-82e0-23300af863b9",
+      "seconds": 0.01
+    },
+    {
+      "feature": "GET /clients/cc23545c-6053-4e8b-82e0-23300af863b9/summary",
+      "seconds": 0.017
+    },
+    {
+      "feature": "GET /documents?limit=50",
+      "seconds": 0.011
+    },
+    {
+      "feature": "GET /reconciliation/transactions?client_id=upgrade-preview-4&limit=100",
+      "seconds": 0.011
+    },
+    {
+      "feature": "GET /reconciliation/results/cc23545c-6053-4e8b-82e0-23300af863b9",
+      "seconds": 0.01
+    },
+    {
+      "feature": "GET /deadlines",
+      "seconds": 0.073
+    },
+    {
+      "feature": "GET /deadlines/client/cc23545c-6053-4e8b-82e0-23300af863b9",
+      "seconds": 0.009
+    },
+    {
+      "feature": "GET /health-scores",
+      "seconds": 0.052
+    },
+    {
+      "feature": "GET /anomalies",
+      "seconds": 0.017
+    },
+    {
+      "feature": "GET /invoices/fraud-queue",
+      "seconds": 0.017
+    },
+    {
+      "feature": "GET /notices",
+      "seconds": 0.13
+    },
+    {
+      "feature": "GET /benchmarking/cc23545c-6053-4e8b-82e0-23300af863b9",
+      "seconds": 0.091
+    },
+    {
+      "feature": "GET /query/starters",
+      "seconds": 0.038
+    },
+    {
+      "feature": "GET /query/saved",
+      "seconds": 0.013
+    },
+    {
+      "feature": "GET /whatsapp/status",
+      "seconds": 1.155
+    },
+    {
+      "feature": "GET /autopilot/overview?auto_refresh=false",
+      "seconds": 0.182
+    },
+    {
+      "feature": "GET /autopilot/exceptions?status=",
+      "seconds": 0.056
+    },
+    {
+      "feature": "GET /autopilot/sync-runs",
+      "seconds": 0.012
+    },
+    {
+      "feature": "GET /work/overview",
+      "seconds": 0.025
+    },
+    {
+      "feature": "GET /work/tasks",
+      "seconds": 0.114
+    },
+    {
+      "feature": "GET /work/daybook",
+      "seconds": 0.045
+    },
+    {
+      "feature": "GET /billing/overview",
+      "seconds": 0.051
+    },
+    {
+      "feature": "GET /billing/plans",
+      "seconds": 0.17
+    },
+    {
+      "feature": "GET /billing/invoices",
+      "seconds": 0.232
+    },
+    {
+      "feature": "GET /portal/contacts",
+      "seconds": 0.043
+    },
+    {
+      "feature": "GET /portal/requests",
+      "seconds": 0.134
+    },
+    {
+      "feature": "GET /portal/client/cc23545c-6053-4e8b-82e0-23300af863b9/snapshot",
+      "seconds": 0.067
+    },
+    {
+      "feature": "GET /team/overview",
+      "seconds": 0.014
+    },
+    {
+      "feature": "GET /team/attendance",
+      "seconds": 0.01
+    },
+    {
+      "feature": "GET /vault/items",
+      "seconds": 0.113
+    },
+    {
+      "feature": "GET /imports/jobs",
+      "seconds": 0.041
+    },
+    {
+      "feature": "GET /reports/overview",
+      "seconds": 0.16
+    },
+    {
+      "feature": "GET /reports/saved-views",
+      "seconds": 0.018
+    },
+    {
+      "feature": "GET /calendar/overview",
+      "seconds": 0.037
+    },
+    {
+      "feature": "GET /calendar/GSTR3B/2026-06/clients",
+      "seconds": 0.128
+    },
+    {
+      "feature": "GET /msme/vendors",
+      "seconds": 0.017
+    },
+    {
+      "feature": "GET /msme/violations",
+      "seconds": 0.112
+    },
+    {
+      "feature": "GET /drawing-power/facilities",
+      "seconds": 0.017
+    },
+    {
+      "feature": "GET /drawing-power/statements",
+      "seconds": 0.011
+    },
+    {
+      "feature": "GET /certificates/types",
+      "seconds": 0.008
+    },
+    {
+      "feature": "GET /certificates",
+      "seconds": 0.021
+    },
+    {
+      "feature": "GET /secretarial",
+      "seconds": 0.017
+    },
+    {
+      "feature": "GET /leases",
+      "seconds": 0.019
+    },
+    {
+      "feature": "GET /rfp/credentials",
+      "seconds": 0.01
+    },
+    {
+      "feature": "GET /rfp/bids",
+      "seconds": 0.009
+    },
+    {
+      "feature": "GET /timesheets/entries?month=2026-06",
+      "seconds": 0.02
+    },
+    {
+      "feature": "GET /timesheets/profitability?month=2026-06",
+      "seconds": 0.19
+    },
+    {
+      "feature": "POST /clients",
+      "seconds": 0.03
+    },
+    {
+      "feature": "PUT /reconciliation/config/cc23545c-6053-4e8b-82e0-23300af863b9",
+      "seconds": 0.016
+    },
+    {
+      "feature": "POST /deadlines",
+      "seconds": 0.019
+    },
+    {
+      "feature": "POST /work/tasks",
+      "seconds": 0.044
+    },
+    {
+      "feature": "POST /billing/plans",
+      "seconds": 0.014
+    },
+    {
+      "feature": "POST /billing/invoices",
+      "seconds": 0.043
+    },
+    {
+      "feature": "POST /portal/contacts",
+      "seconds": 0.016
+    },
+    {
+      "feature": "POST /portal/requests",
+      "seconds": 0.043
+    },
+    {
+      "feature": "POST /team/attendance",
+      "seconds": 0.017
+    },
+    {
+      "feature": "POST /vault/items",
+      "seconds": 0.091
+    },
+    {
+      "feature": "POST /imports/jobs",
+      "seconds": 0.016
+    },
+    {
+      "feature": "POST /reports/saved-views",
+      "seconds": 0.014
+    },
+    {
+      "feature": "POST /msme/vendors",
+      "seconds": 0.016
+    },
+    {
+      "feature": "POST /drawing-power/facilities",
+      "seconds": 0.017
+    },
+    {
+      "feature": "POST /certificates",
+      "seconds": 0.018
+    },
+    {
+      "feature": "POST /secretarial",
+      "seconds": 0.017
+    },
+    {
+      "feature": "POST /leases",
+      "seconds": 0.017
+    },
+    {
+      "feature": "POST /timesheets/entries",
+      "seconds": 0.014
+    },
+    {
+      "feature": "POST /autopilot/followups",
+      "seconds": 0.016
+    },
+    {
+      "feature": "POST /whatsapp/consent-link/cc23545c-6053-4e8b-82e0-23300af863b9",
+      "seconds": 0.151
+    },
+    {
+      "feature": "api feature tests",
+      "seconds": 4.798
+    }
+  ]
+}

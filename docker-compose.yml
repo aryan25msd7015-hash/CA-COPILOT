@@ -1,0 +1,154 @@
+services:
+
+  # ── PostgreSQL 16 ──────────────────────────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ca_platform
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: devpass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis 7 ───────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── FastAPI backend ────────────────────────────────────────────────────
+  backend:
+    build: ./backend
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://postgres:devpass@postgres:5432/ca_platform
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: dev-secret-change-in-production
+      S3_BUCKET: ca-platform-dev
+      AWS_REGION: ap-south-1
+      FRONTEND_URL: http://localhost:3000
+      ENV: development
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app          # hot-reload in dev
+
+  # ── Celery worker — OCR queue ──────────────────────────────────────────
+  worker-ocr:
+    build: ./backend
+    command: celery -A app.celery_app worker -Q ocr -c 2 --loglevel=info
+    environment:
+      DATABASE_URL: postgresql://postgres:devpass@postgres:5432/ca_platform
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: dev-secret-change-in-production
+      S3_BUCKET: ca-platform-dev
+      AWS_REGION: ap-south-1
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend:/app
+
+  # ── Celery worker — Heavy queue (reconciliation, anomaly, health) ───────
+  worker-heavy:
+    build: ./backend
+    command: celery -A app.celery_app worker -Q heavy -c 4 --loglevel=info
+    environment:
+      DATABASE_URL: postgresql://postgres:devpass@postgres:5432/ca_platform
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: dev-secret-change-in-production
+      S3_BUCKET: ca-platform-dev
+      AWS_REGION: ap-south-1
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend:/app
+
+  # ── Celery worker — LLM queue (RAG, NL query, audit papers) ───────────
+  worker-llm:
+    build: ./backend
+    command: celery -A app.celery_app worker -Q llm -c 2 --loglevel=info
+    environment:
+      DATABASE_URL: postgresql://postgres:devpass@postgres:5432/ca_platform
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: dev-secret-change-in-production
+      S3_BUCKET: ca-platform-dev
+      AWS_REGION: ap-south-1
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend:/app
+
+  # ── Celery worker — WhatsApp queue ────────────────────────────────────
+  worker-whatsapp:
+    build: ./backend
+    command: celery -A app.celery_app worker -Q whatsapp -c 2 --loglevel=info
+    environment:
+      DATABASE_URL: postgresql://postgres:devpass@postgres:5432/ca_platform
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: dev-secret-change-in-production
+      S3_BUCKET: ca-platform-dev
+      AWS_REGION: ap-south-1
+      WHATSAPP_TOKEN: ${WHATSAPP_TOKEN:-}
+      WHATSAPP_PHONE_ID: ${WHATSAPP_PHONE_ID:-}
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend:/app
+
+  # ── Celery Beat scheduler ─────────────────────────────────────────────
+  beat:
+    build: ./backend
+    command: celery -A app.celery_app beat --loglevel=info
+    environment:
+      DATABASE_URL: postgresql://postgres:devpass@postgres:5432/ca_platform
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: dev-secret-change-in-production
+      S3_BUCKET: ca-platform-dev
+      AWS_REGION: ap-south-1
+    depends_on:
+      - redis
+    volumes:
+      - ./backend:/app
+
+  # ── Next.js 14 frontend ───────────────────────────────────────────────
+  frontend:
+    build: ./frontend
+    command: npm run dev
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules          # keep container node_modules separate
+      - /app/.next                 # keep Linux dev artifacts separate from host builds
+
+volumes:
+  postgres_data:
