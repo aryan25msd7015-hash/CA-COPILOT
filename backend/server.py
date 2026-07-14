@@ -356,6 +356,240 @@ def query_saved(): return []
 @app.get("/api/events")
 def events(): return {"items": []}
 
+# ---------------------------------------------------------------------------
+# Razorpay — preview stub
+# ---------------------------------------------------------------------------
+
+PLANS = [
+    {"code": "starter",    "name": "Starter",    "tagline": "Solo & small practice — up to 25 clients",
+     "amount_inr": 2499,  "period": "monthly", "interval": 1,
+     "features": ["GST reconciliation", "Deadlines & reminders", "Client portal (5 users)", "Basic AI review"]},
+    {"code": "pro",        "name": "Pro",        "tagline": "Growing firm — up to 150 clients",
+     "amount_inr": 5999,  "period": "monthly", "interval": 1,
+     "features": ["Everything in Starter", "Exception Autopilot", "Notice drafter + certificates", "WhatsApp collections"]},
+    {"code": "enterprise", "name": "Enterprise", "tagline": "Full command deck — unlimited clients",
+     "amount_inr": 14999, "period": "monthly", "interval": 1,
+     "features": ["Everything in Pro", "Benchmarking + RFP", "Audit papers + Ind AS 116", "SSO + priority support"]},
+]
+
+_STUB_SUBS: List[Dict[str, Any]] = []
+
+@app.get("/api/razorpay/config")
+def rz_config():
+    return {
+        "key_id": "rzp_test_STUB_PLACEHOLDER",
+        "configured": False,   # explicitly false — placeholders only
+        "webhook_configured": False,
+        "currency": "INR",
+        "test_mode": True,
+        "preview_stub": True,
+    }
+
+@app.get("/api/razorpay/plans")
+def rz_plans(): return PLANS
+
+@app.post("/api/razorpay/orders")
+async def rz_order(request: Request):
+    body = await request.json()
+    return {
+        "order_id": f"order_STUB_{random.randint(10_000_000, 99_999_999)}",
+        "amount_paise": int((body.get("amount_inr") or 0) * 100),
+        "currency": "INR",
+        "receipt": body.get("receipt"),
+        "key_id": "rzp_test_STUB_PLACEHOLDER",
+        "notes": {"stub": "true"},
+    }
+
+@app.post("/api/razorpay/verify-payment")
+async def rz_verify(request: Request):
+    # Preview stub — always verifies OK. Real backend uses HMAC-SHA256.
+    return {"ok": True, "verified": True, "preview_stub": True}
+
+@app.post("/api/razorpay/payment-links")
+async def rz_link(request: Request):
+    body = await request.json()
+    lid = f"plink_STUB_{random.randint(10_000_000, 99_999_999)}"
+    return {
+        "id": lid,
+        "short_url": f"https://rzp.io/l/{lid[-8:]}",
+        "amount_inr": body.get("amount_inr"),
+        "status": "created",
+    }
+
+@app.post("/api/razorpay/subscriptions")
+async def rz_sub(request: Request):
+    body = await request.json()
+    plan = next((p for p in PLANS if p["code"] == body.get("plan_code")), PLANS[0])
+    sub_id = f"sub_STUB_{random.randint(10_000_000, 99_999_999)}"
+    row = {
+        "id": f"sr-{len(_STUB_SUBS) + 1:04d}",
+        "razorpay_subscription_id": sub_id,
+        "plan_code": plan["code"],
+        "amount_inr": plan["amount_inr"],
+        "currency": "INR",
+        "status": "created",
+        "short_url": f"https://rzp.io/i/{sub_id[-8:]}",
+        "next_charge_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    _STUB_SUBS.append(row)
+    return row
+
+@app.get("/api/razorpay/subscriptions")
+def rz_sub_list(): return _STUB_SUBS
+
+@app.delete("/api/razorpay/subscriptions/{sid}")
+def rz_sub_cancel(sid: str):
+    for r in _STUB_SUBS:
+        if r["id"] == sid:
+            r["status"] = "cancelled"
+            return {"ok": True, "id": sid, "status": "cancelled"}
+    return {"ok": True, "id": sid, "status": "cancelled"}
+
+# ---------------------------------------------------------------------------
+# Billing (used by the /billing page)
+# ---------------------------------------------------------------------------
+
+_STUB_INVOICES: List[Dict[str, Any]] = []
+
+def _seed_invoices():
+    if _STUB_INVOICES:
+        return
+    for i, c in enumerate(DEMO_CLIENTS[:12]):
+        seed = random.Random(i * 7 + 1)
+        total = seed.randint(15_000, 250_000)
+        paid = 0 if i % 3 != 0 else int(total * 0.4)
+        _STUB_INVOICES.append({
+            "id": f"inv-{i:04d}",
+            "client_id": c["id"],
+            "client_name": c["name"],
+            "invoice_no": f"INV-2026-{i + 1001}",
+            "issue_date": (datetime.now(timezone.utc) - timedelta(days=seed.randint(3, 45))).date().isoformat(),
+            "due_date":  (datetime.now(timezone.utc) + timedelta(days=seed.randint(-15, 20))).date().isoformat(),
+            "total": total,
+            "amount_paid": paid,
+            "outstanding": total - paid,
+            "days_overdue": max(seed.randint(-10, 20), 0),
+            "status": "part_paid" if paid > 0 else seed.choice(["sent", "overdue", "draft"]),
+            "payment_link": None,
+        })
+
+@app.get("/api/billing/overview")
+def billing_overview():
+    _seed_invoices()
+    outstanding = sum(inv["outstanding"] for inv in _STUB_INVOICES)
+    overdue = sum(inv["outstanding"] for inv in _STUB_INVOICES if inv["days_overdue"] > 0)
+    collected = sum(inv["amount_paid"] for inv in _STUB_INVOICES)
+    total = outstanding + collected
+    return {
+        "invoice_count": len(_STUB_INVOICES),
+        "outstanding": outstanding,
+        "overdue": overdue,
+        "collected": collected,
+        "collection_rate": int((collected / total) * 100) if total else 0,
+        "active_plans": 6,
+        "plans_due_next_30": 4,
+        "by_status": {"sent": 5, "part_paid": 4, "overdue": 3},
+        "ageing": {"0_30": outstanding * 0.5, "31_60": outstanding * 0.25, "61_90": outstanding * 0.15, "91_plus": outstanding * 0.1, "not_due": 0},
+    }
+
+@app.get("/api/billing/plan-usage")
+def billing_plan_usage():
+    return {
+        "plan": "pro",
+        "limits": {"clients": 150, "documents_per_month": 5000, "storage_gb": 100, "seats": 8, "whatsapp_msg": 4000},
+        "usage":  {"clients": 24,  "documents_per_month": 1240, "storage_gb": 21,  "seats": 3, "whatsapp_msg": 640},
+        "status": {"clients": "ok", "documents_per_month": "ok", "storage_gb": "ok", "seats": "ok", "whatsapp_msg": "ok"},
+    }
+
+@app.get("/api/billing/invoices")
+def billing_invoices():
+    _seed_invoices()
+    return _STUB_INVOICES
+
+@app.post("/api/billing/invoices")
+async def billing_create_invoice(request: Request):
+    _seed_invoices()
+    body = await request.json()
+    total = sum(li.get("amount", 0) for li in (body.get("line_items") or []))
+    total = total * 1.18   # 18% GST
+    inv = {
+        "id": f"inv-new-{len(_STUB_INVOICES) + 1:04d}",
+        "client_id": body.get("client_id"),
+        "client_name": next((c["name"] for c in DEMO_CLIENTS if c["id"] == body.get("client_id")), "Client"),
+        "invoice_no": f"INV-2026-{2000 + len(_STUB_INVOICES)}",
+        "issue_date": body.get("issue_date"),
+        "due_date": body.get("due_date"),
+        "total": total, "amount_paid": 0, "outstanding": total, "days_overdue": 0,
+        "status": body.get("status") or "sent",
+        "payment_link": None,
+    }
+    _STUB_INVOICES.append(inv)
+    return inv
+
+@app.patch("/api/billing/invoices/{iid}")
+async def billing_patch(iid: str, request: Request):
+    body = await request.json()
+    for inv in _STUB_INVOICES:
+        if inv["id"] == iid:
+            inv.update(body)
+            return inv
+    return {"ok": True}
+
+@app.post("/api/billing/invoices/{iid}/payments")
+async def billing_pay(iid: str, request: Request):
+    body = await request.json()
+    for inv in _STUB_INVOICES:
+        if inv["id"] == iid:
+            amt = float(body.get("amount") or 0)
+            inv["amount_paid"] += amt
+            inv["outstanding"] = max(inv["total"] - inv["amount_paid"], 0)
+            inv["status"] = "paid" if inv["outstanding"] == 0 else "part_paid"
+            return inv
+    return {"ok": True}
+
+@app.post("/api/billing/invoices/{iid}/payment-link")
+def billing_link(iid: str):
+    for inv in _STUB_INVOICES:
+        if inv["id"] == iid:
+            inv["payment_link"] = f"https://rzp.io/l/{iid[-8:]}"
+            return {"invoice": inv}
+    return {"ok": True}
+
+@app.get("/api/billing/plans")
+def billing_plans():
+    return [
+        {"id": f"pl-{i:03d}", "client_id": c["id"], "client_name": c["name"],
+         "name": "Monthly retainer", "service_scope": ["GST", "TDS", "advisory"],
+         "frequency": "monthly", "amount": 25000, "tax_rate": 18,
+         "next_invoice_date": (datetime.now(timezone.utc) + timedelta(days=random.randint(1, 30))).date().isoformat(),
+         "active": True}
+        for i, c in enumerate(DEMO_CLIENTS[:8])
+    ]
+
+@app.post("/api/billing/plans")
+async def billing_plan_create(request: Request):
+    return {"ok": True}
+
+@app.get("/api/billing/payments")
+def billing_payments():
+    _seed_invoices()
+    return [{
+        "id": f"pmt-{i:04d}",
+        "invoice_no": inv["invoice_no"],
+        "client_name": inv["client_name"],
+        "paid_at": (datetime.now(timezone.utc) - timedelta(days=random.randint(1, 30))).date().isoformat(),
+        "amount": inv["amount_paid"],
+        "mode": random.choice(["razorpay", "bank_transfer", "upi"]),
+        "reference": f"pay_{random.randint(10_000_000, 99_999_999)}",
+    } for i, inv in enumerate(_STUB_INVOICES) if inv["amount_paid"] > 0]
+
+@app.get("/api/portal/invoices")
+def portal_invoices():
+    _seed_invoices()
+    # Client portal sees only their own open invoices — for preview return a few.
+    return [inv for inv in _STUB_INVOICES if inv["outstanding"] > 0][:6]
+
 # Catch-all: return empty list for any other /api GET so pages don't 404.
 @app.get("/api/{full_path:path}")
 def catchall(full_path: str):

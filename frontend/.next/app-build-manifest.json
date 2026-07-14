@@ -6,6 +6,16 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
+    "/(dashboard)/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/(dashboard)/layout.js"
+    ],
+    "/(dashboard)/billing/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/(dashboard)/billing/page.js"
+    ],
     "/(auth)/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
@@ -16,45 +26,10 @@
       "static/chunks/main-app.js",
       "static/chunks/app/(auth)/login/page.js"
     ],
-    "/(dashboard)/layout": [
+    "/(dashboard)/portal/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/(dashboard)/layout.js"
-    ],
-    "/(dashboard)/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/css/app/(dashboard)/page.css",
-      "static/chunks/app/(dashboard)/page.js"
-    ],
-    "/(dashboard)/clients/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/css/app/(dashboard)/clients/page.css",
-      "static/chunks/app/(dashboard)/clients/page.js"
-    ],
-    "/(dashboard)/autopilot/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/(dashboard)/autopilot/page.js"
-    ],
-    "/(dashboard)/reconciliation/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/css/app/(dashboard)/reconciliation/page.css",
-      "static/chunks/app/(dashboard)/reconciliation/page.js"
-    ],
-    "/(dashboard)/deadlines/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/css/app/(dashboard)/deadlines/page.css",
-      "static/chunks/app/(dashboard)/deadlines/page.js"
-    ],
-    "/(dashboard)/anomalies/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/css/app/(dashboard)/anomalies/page.css",
-      "static/chunks/app/(dashboard)/anomalies/page.js"
+      "static/chunks/app/(dashboard)/portal/page.js"
     ]
   }
 }

@@ -112,3 +112,38 @@
 3. (Optional) Add framer-motion for cross-route transitions.
 
 _Last updated: 2026-01-14 by E1._
+
+## [2026-01-14 · +Razorpay integration]
+
+Added Razorpay payments across all three flows and both surfaces.
+
+### Files added
+- `backend/app/services/razorpay_service.py` — official SDK (razorpay==2.0.1) wrappers for Orders, Plans, Subscriptions, Payment Links, and webhook + Checkout HMAC verification.
+- `backend/app/routers/razorpay.py` — router at `/razorpay/*` (config, plans, orders, verify-payment, subscriptions, payment-links, webhook). Registered in `main.py`.
+- `backend/app/models/razorpay_models.py` — `RazorpayEvent` (webhook idempotency + replay) and `RazorpaySubscription` (firm-level SaaS subs).
+- `backend/alembic/versions/20260114_razorpay.py` — Alembic migration creating both tables.
+- `frontend/lib/razorpay.ts` — Checkout script loader + `openCheckout()`, plans, subs, standalone links.
+- `frontend/components/billing/PaymentsTab.tsx` — HUD-styled gateway status strip, Open-invoices card grid, plan cards (Starter/Pro/Enterprise), standalone payment-link generator.
+- `frontend/components/portal/PortalPayInvoices.tsx` — client-portal Pay-now widget.
+
+### Files modified
+- `backend/app/main.py` — added `razorpay_router` include with `/razorpay` prefix.
+- `backend/.env.example` — added `PAYMENT_PROVIDER`, `RAZORPAY_KEY_ID/SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `PAYMENT_LINK_EXPIRE_DAYS`.
+- `backend/.env` — PLACEHOLDERS set (rzp_test_PLACEHOLDER_REPLACE_ME etc.).
+- `backend/requirements.txt` — added `razorpay==2.0.1`.
+- `frontend/app/(dashboard)/billing/page.tsx` — Operations / Payments · Razorpay tab switcher; hero header rebuilt in HUD style.
+- `frontend/app/(dashboard)/portal/page.tsx` — top-of-page Pay-open-invoices widget slotted in.
+- `frontend/.env` — added `NEXT_PUBLIC_RAZORPAY_KEY_ID` placeholder.
+- `backend/server.py` (preview stub) — new `/api/razorpay/*` and `/api/billing/*` and `/api/portal/invoices` endpoints.
+
+### Deployment steps (real backend)
+1. Replace placeholders in `backend/.env` with real Razorpay test keys.
+2. Create webhook in Razorpay Dashboard → Settings → Webhooks. URL: `<your-domain>/api/razorpay/webhook`. Subscribe to `payment.captured, payment.failed, refund.processed, refund.failed, payment_link.paid, payment_link.expired, payment_link.cancelled, subscription.activated, subscription.charged, subscription.halted, subscription.cancelled, subscription.completed, order.paid`. Set the same secret as `RAZORPAY_WEBHOOK_SECRET`.
+3. Set `NEXT_PUBLIC_RAZORPAY_KEY_ID` in `frontend/.env` to the same `rzp_test_*` id.
+4. Apply migration: `docker compose exec backend alembic upgrade head`.
+5. Restart backend + frontend.
+
+### Verified in preview
+- `/billing` → **Payments · Razorpay** tab renders with 3 sections (Open invoices, Plans, Payment Link generator).
+- `/portal` → top card shows 4 open invoices with `Pay now` CTAs.
+- Backend endpoints healthy: `GET /api/razorpay/{config,plans}`, `POST /api/razorpay/{orders,verify-payment,subscriptions,payment-links}`, `DELETE /api/razorpay/subscriptions/:id`.

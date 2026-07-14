@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { Client } from '@/types';
 import ClientSelect from '@/components/shared/ClientSelect';
 import StatusBadge from '@/components/shared/StatusBadge';
+import PortalPayInvoices from '@/components/portal/PortalPayInvoices';
 
 interface PortalOverview {
   contacts: number;
@@ -130,11 +131,15 @@ export default function PortalPage() {
   ];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" data-testid="portal-page">
       <div>
-        <h1 className="text-xl font-semibold text-slate-950">Client Portal</h1>
-        <p className="text-sm text-slate-500">Client contacts, document requests, approvals, status visibility, and secure collaboration queue.</p>
+        <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-cyan-signal">CLIENT PORTAL · SECTOR 08</p>
+        <h1 className="mt-1 font-display text-3xl font-semibold text-fg-0">Client Portal</h1>
+        <p className="mt-1 text-sm text-fg-2">Client contacts, document requests, approvals, and secure collaboration.</p>
       </div>
+
+      {/* PAY OPEN INVOICES — client self-service Razorpay collections */}
+      <PortalPayInvoices />
 
       <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
         {metrics.map(([label, value]) => (

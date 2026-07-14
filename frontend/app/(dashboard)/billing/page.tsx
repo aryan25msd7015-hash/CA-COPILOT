@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { Client } from '@/types';
 import ClientSelect from '@/components/shared/ClientSelect';
 import StatusBadge from '@/components/shared/StatusBadge';
+import PaymentsTab from '@/components/billing/PaymentsTab';
 
 interface BillingOverview {
   invoice_count: number;
@@ -71,6 +72,7 @@ function money(value: number) {
 }
 
 export default function BillingPage() {
+  const [tab, setTab] = useState<'operations' | 'payments'>('operations');
   const [invoiceFilters, setInvoiceFilters] = useState({ status: 'draft,sent,part_paid,overdue', client_id: '', due_to: '' });
   const [planClientId, setPlanClientId] = useState('');
   const [paymentClientId, setPaymentClientId] = useState('');
@@ -194,12 +196,38 @@ export default function BillingPage() {
   ];
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-950">Billing & Collections</h1>
-        <p className="text-sm text-slate-500">Fee plans, invoices, payment tracking, ageing, and collection follow-up readiness.</p>
+    <div className="space-y-5" data-testid="billing-page">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-cyan-signal">
+            REVENUE OPS · SECTOR 06
+          </p>
+          <h1 className="mt-1 font-display text-3xl font-semibold text-fg-0">Billing & Collections</h1>
+          <p className="mt-1 max-w-2xl text-sm text-fg-2">
+            Fee plans, invoices, payment tracking, ageing, and Razorpay-powered collections.
+          </p>
+        </div>
+        <div className="inline-flex rounded-xl border border-line bg-[rgba(9,14,32,0.55)] p-1" data-testid="billing-tabs">
+          {(['operations', 'payments'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              data-testid={`billing-tab-${t}`}
+              className={`rounded-lg px-4 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] transition ${
+                tab === t
+                  ? 'bg-gradient-to-r from-cyan-500/25 to-violet-500/15 text-fg-0 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.45)]'
+                  : 'text-fg-2 hover:text-fg'
+              }`}
+            >
+              {t === 'operations' ? 'Operations' : 'Payments · Razorpay'}
+            </button>
+          ))}
+        </div>
       </div>
 
+      {tab === 'payments' && <PaymentsTab invoices={invoices.data || []} />}
+      {tab === 'operations' && (
+        <>
       <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
         {metrics.map(([label, value]) => (
           <div key={label} className="rounded-lg border border-slate-200 bg-white p-4">
@@ -401,6 +429,8 @@ export default function BillingPage() {
           </div>
         </section>
       </div>
+        </>
+      )}
     </div>
   );
 }
