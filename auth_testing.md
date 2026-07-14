@@ -15,7 +15,7 @@
 ## curl smoke tests
 
 ```bash
-API=https://upgrade-preview-4.preview.emergentagent.com/api
+API=https://live-peek-1.preview.emergentagent.com/api
 
 # 1. Confirm the config endpoint reports Google Auth is ready
 curl -sS $API/auth/google/config
