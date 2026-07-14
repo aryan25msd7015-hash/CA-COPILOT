@@ -55,6 +55,10 @@ class Settings(BaseSettings):
     RAZORPAY_WEBHOOK_SECRET: str = ""
     PAYMENT_LINK_EXPIRE_DAYS: int = 30
 
+    # Emergent-managed Google Auth
+    GOOGLE_SIGNUP_MODE: str = "auto_pending"       # invited_only | auto_pending | auto_partner
+    GOOGLE_ALLOWED_DOMAINS: str = ""               # comma-separated; empty = anyone
+
     # Observability
     SENTRY_DSN: str = ""
     SENTRY_TRACES_SAMPLE_RATE: float = 0.1

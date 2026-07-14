@@ -147,3 +147,47 @@ Added Razorpay payments across all three flows and both surfaces.
 - `/billing` → **Payments · Razorpay** tab renders with 3 sections (Open invoices, Plans, Payment Link generator).
 - `/portal` → top card shows 4 open invoices with `Pay now` CTAs.
 - Backend endpoints healthy: `GET /api/razorpay/{config,plans}`, `POST /api/razorpay/{orders,verify-payment,subscriptions,payment-links}`, `DELETE /api/razorpay/subscriptions/:id`.
+
+## [2026-01-14 · +Emergent-managed Google Auth]
+
+Added "Continue with Google" alongside existing email/password + MFA login.
+
+### Files added
+- `backend/app/routers/google_auth.py` — router at `/api/auth/google/*`. Endpoints:
+    - `GET  /api/auth/google/config` — provider, signup mode, allowed domains.
+    - `POST /api/auth/google/session` — accepts `{session_id}`, calls
+      `https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data`
+      with header `X-Session-ID`, provisions the user per
+      `GOOGLE_SIGNUP_MODE` (`invited_only | auto_pending | auto_partner`) and
+      `GOOGLE_ALLOWED_DOMAINS`, and returns our existing JWT
+      `{access_token, refresh_token, user}` so the frontend `useAuth` and
+      `require_user` dep work unchanged.
+- `frontend/lib/googleAuth.ts` — `startGoogleSignIn(intent)`, `exchangeGoogleSession(session_id)`, `fetchGoogleAuthConfig()`.
+- `frontend/app/auth/callback/page.tsx` — HUD landing that reads `#session_id=…` from the URL fragment, exchanges it, and full-page navigates to `/` (firm intent) or `/portal` (portal intent). Handles Success / Awaiting-approval / Error phases with the same futuristic style.
+- `/app/auth_testing.md` — playbook saved per Emergent docs.
+
+### Files modified
+- `backend/app/main.py` — registered `google_auth_router` at `/auth/google`.
+- `backend/app/config.py` — added `GOOGLE_SIGNUP_MODE`, `GOOGLE_ALLOWED_DOMAINS`.
+- `backend/.env` + `backend/.env.example` — same two env vars documented.
+- `backend/server.py` (preview stub) — `/api/auth/google/{config,session}` mock endpoints that accept any `session_id` and issue the demo JWT.
+- `frontend/app/(auth)/login/page.tsx` — big "Continue with Google" button with the Google G mark, SSO chip, and an "Or with key" divider above the existing password form.
+
+### Auto-provisioning matrix
+| `GOOGLE_SIGNUP_MODE` | new email behavior |
+| --- | --- |
+| `invited_only` | 403 "Awaiting invite". User must be pre-invited via the users table first. |
+| `auto_pending` (default) | Create user with role='article' (least privilege). Frontend renders "Awaiting partner approval" phase. |
+| `auto_partner` | Create user with role='partner', immediate access. Recommended only for dev / first-user-in-fresh-org. |
+
+The very first user in a brand-new org is always promoted to `partner` (founding).
+
+### Deployment steps
+1. Set `GOOGLE_SIGNUP_MODE=auto_pending` (or your preferred mode) in `backend/.env`.
+2. Optionally set `GOOGLE_ALLOWED_DOMAINS=yourfirm.co.in,partner-domain.in` to restrict SSO to specific domains.
+3. Restart backend. No frontend env vars needed for Emergent-managed Google Auth.
+4. Verify `curl <api>/auth/google/config` returns `configured: true`.
+
+### Verified in preview
+- `/login` shows "Continue with Google" + Google G icon + SSO chip.
+- `/auth/callback#session_id=xxxxxx` renders the HUD "Access granted" card, then full-page navigates to `/` with the Google user signed in (visible in the sidebar profile capsule).

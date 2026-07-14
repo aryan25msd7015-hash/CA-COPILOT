@@ -144,6 +144,50 @@ async def acc(request: Request):
 def me():
     return {**DEMO_USER, "id": DEMO_USER["sub"]}
 
+# ---------------------------------------------------------------------------
+# Emergent Google Auth — preview stub
+# ---------------------------------------------------------------------------
+
+@app.get("/api/auth/google/config")
+def rz_google_config():
+    return {
+        "provider": "emergent_google_auth",
+        "configured": True,
+        "signup_mode": "auto_partner",   # preview: drop straight into dashboard
+        "allowed_domains": [],
+        "auth_url": "https://auth.emergentagent.com/",
+        "preview_stub": True,
+    }
+
+@app.post("/api/auth/google/session")
+async def rz_google_session(request: Request):
+    """Preview stub — accepts ANY session_id and returns a demo JWT.
+
+    Real backend (docker-compose) actually calls Emergent /session-data.
+    """
+    body = await request.json()
+    sid = (body.get("session_id") or "").strip()
+    if not sid:
+        return JSONResponse({"detail": "session_id required"}, status_code=400)
+    # In the preview stub, we don't actually contact Emergent auth service.
+    # Simulate a Google sign-in for the demo user.
+    email = f"google.demo.{sid[:6].lower()}@cacopilot.example.com"
+    tok = _fake_jwt(DEMO_USER["sub"], DEMO_USER["org_id"], DEMO_USER["role"], email)
+    return {
+        "access_token": tok,
+        "refresh_token": tok,
+        "token_type": "bearer",
+        "user": {
+            "id": DEMO_USER["sub"],
+            "org_id": DEMO_USER["org_id"],
+            "email": email,
+            "role": DEMO_USER["role"],
+            "name": "Google Demo User",
+            "picture": None,
+        },
+    }
+
+
 @app.get("/api/users")
 def users_list():
     return [
