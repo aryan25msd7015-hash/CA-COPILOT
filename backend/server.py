@@ -25,6 +25,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 import resend_mailer as mailer
 import gemini_chat as gem
+import elevenlabs_tts as tts
 
 app = FastAPI(title="CA Copilot · Preview Stub", version="0.1.0")
 
@@ -640,6 +641,70 @@ async def ai_summary_audit(request: Request):
     body = await request.json()
     artifact = body.get("artifact") or body
     return await _run_deep("audit_paper", artifact)
+
+
+# ---------------------------------------------------------------------------
+# ElevenLabs — text-to-speech
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/voice/config")
+def voice_config():
+    return {
+        "provider": "elevenlabs",
+        "dry_run": tts.is_dry_run(),
+        "placeholder_key": tts.is_placeholder(),
+        "default_voice_id": tts.DEFAULT_VOICE_ID,
+        "friday_voice_id": tts.FRIDAY_VOICE_ID,
+        "long_model": tts.LONG_MODEL,
+        "friday_model": tts.FRIDAY_MODEL,
+        "max_chars": tts.MAX_TEXT_CHARS,
+    }
+
+
+@app.get("/api/voice/voices")
+async def voice_voices():
+    return await tts.list_voices()
+
+
+@app.get("/api/voice/recent")
+def voice_recent():
+    return tts.TTS_LOG[:50]
+
+
+@app.post("/api/voice/tts")
+async def voice_tts(request: Request):
+    """Stream synthesised speech. Body: {text, surface?, voice_id?, model_id?}.
+    Returns audio/mpeg (real synth) or audio/wav (dry-run silent stub)."""
+    body = await request.json()
+    text = (body.get("text") or "").strip()
+    surface = (body.get("surface") or "read_aloud").strip()
+    voice_id = body.get("voice_id")
+    model_id = body.get("model_id")
+    if not text:
+        raise HTTPException(status_code=400, detail="text is required")
+    if len(text) > tts.MAX_TEXT_CHARS:
+        text = text[: tts.MAX_TEXT_CHARS]
+
+    media_type = tts.DRY_RUN_MEDIA_TYPE if tts.is_dry_run() else tts.REAL_MEDIA_TYPE
+    headers = {
+        "Cache-Control": "no-store",
+        "X-Voice-DryRun": "true" if tts.is_dry_run() else "false",
+        "X-Voice-Surface": surface,
+        "X-Voice-Chars": str(len(text)),
+    }
+
+    async def gen():
+        try:
+            async for chunk in tts.synthesize_stream(
+                text=text, surface=surface, voice_id=voice_id, model_id=model_id
+            ):
+                yield chunk
+        except Exception as exc:  # noqa
+            # Response body already started — best we can do is log
+            logging.getLogger("ca_platform.voice").exception("tts stream errored: %s", exc)
+
+    return StreamingResponse(gen(), media_type=media_type, headers=headers)
 
 @app.get("/api/events")
 def events(): return {"items": []}

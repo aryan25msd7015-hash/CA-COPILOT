@@ -11,6 +11,7 @@ import PageHeader from '@/components/shared/PageHeader';
 import TaskStatusPoller from '@/components/shared/TaskStatusPoller';
 import StatusBadge from '@/components/shared/StatusBadge';
 import AiSummaryModal from '@/components/ai/AiSummaryModal';
+import SpeakButton from '@/components/voice/SpeakButton';
 import type { ColDef, ICellRendererParams } from 'ag-grid-community';
 
 interface DraftResult {
@@ -148,7 +149,11 @@ export default function NoticesPage() {
           <p className="font-medium text-gray-900">{value || '-'}</p>
         </div>)}
       </div>}
-      <h2 className="font-medium text-gray-900">Draft reply</h2><pre className="whitespace-pre-wrap rounded-lg bg-gray-50 p-4 text-sm leading-6 text-gray-800">{result.draft}</pre>
+      <div className="flex items-center justify-between">
+        <h2 className="font-medium text-gray-900">Draft reply</h2>
+        <SpeakButton text={result.draft} surface="read_aloud" variant="chip" label="Read aloud" testId="btn-speak-notice-draft" />
+      </div>
+      <pre className="whitespace-pre-wrap rounded-lg bg-gray-50 p-4 text-sm leading-6 text-gray-800">{result.draft}</pre>
       <details><summary className="cursor-pointer text-sm font-medium text-blue-700">Verified source chunks</summary><div className="mt-3 space-y-3">{(result.source_chunks || []).map((chunk, i) => <p key={i} className="rounded bg-gray-50 p-3 text-xs text-gray-600">{chunk}</p>)}</div></details>
     </div>}
     <AiSummaryModal

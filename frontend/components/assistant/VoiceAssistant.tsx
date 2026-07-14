@@ -9,6 +9,7 @@ import {
 import { api } from '@/lib/api';
 import { navItemsForRole } from '@/lib/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useTts } from '@/lib/useTts';
 import type { Client } from '@/types';
 
 type Message = {
@@ -126,18 +127,23 @@ export default function VoiceAssistant() {
   ]);
 
   const navItems = useMemo(() => navItemsForRole(user?.role), [user?.role]);
+  const tts = useTts({ surface: 'friday' });
 
   function addMessage(message: Message) {
     setMessages(current => [...current.slice(-8), message]);
   }
 
   function speak(text: string) {
-    if (!voiceEnabled || typeof window === 'undefined' || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1;
-    utterance.pitch = 0.94;
-    window.speechSynthesis.speak(utterance);
+    if (!voiceEnabled) return;
+    // Try ElevenLabs; fall back to browser speechSynthesis if it errors.
+    tts.speak(text).catch(() => {
+      if (typeof window === 'undefined' || !window.speechSynthesis) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1;
+      utterance.pitch = 0.94;
+      window.speechSynthesis.speak(utterance);
+    });
   }
 
   function answer(text: string) {
@@ -192,6 +198,7 @@ export default function VoiceAssistant() {
       alwaysListenRef.current = false;
       recognitionRef.current?.stop();
       window.speechSynthesis?.cancel();
+      tts.stop();
     };
   }, [refreshTelemetry, user]);
 

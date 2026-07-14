@@ -29,3 +29,4 @@ emergentintegrations==0.2.0
 razorpay==2.0.1
 resend>=2.0.0
 svix>=1.0.0
+elevenlabs>=1.0.0

@@ -311,3 +311,94 @@ GEMINI_DEEP_MODEL=gemini-2.5-pro
 - `POST /api/ai/summarize/anomaly` returns the structured brief in <15s with proper section headings and severity-tagged risks.
 - Session persistence: reload survives — sessions rail shows history, messages replay.
 - Bounce-on-thin-signal: when the artifact is under-specified, deep analyst politely says "Insufficient signal — request X" instead of hallucinating.
+
+
+## ElevenLabs TTS integration (Jul 2026)
+
+Text-to-speech via the ElevenLabs Python SDK. Powers Friday voice-out and
+read-aloud buttons on chat responses, notice drafts, and AI summaries.
+
+### Architecture
+- **`elevenlabs_tts.py`** — TTS service module with lazy SDK client, curated
+  premade voice catalogue (8 voices), in-memory usage log, and streaming
+  synthesis via `client.text_to_speech.stream()`.
+- **Dry-run mode** — when `ELEVENLABS_API_KEY=sk_placeholder`, the endpoint
+  streams a tiny valid silent WAV file (~22 KB, 0.5s of silence at 22 kHz
+  mono 16-bit, built at import time using stdlib `wave` — no ffmpeg or
+  pydub needed). This keeps the frontend audio pipeline exercisable
+  end-to-end without a real API key.
+- **Content-Type switching** — `audio/wav` in dry-run, `audio/mpeg` in real
+  synth. `X-Voice-DryRun` header lets the client show a dry-run indicator.
+
+### Model + voice mix
+| Surface | Model | Default voice |
+|---|---|---|
+| Friday quick-fire | `eleven_flash_v2_5` (sub-100ms latency) | Alice (`Xb7hH8MSUJpSbSDYk0k2`) — bright, snappy British female |
+| Read-aloud (chat / notices / AI summaries) | `eleven_multilingual_v2` (best quality) | Aria (`9BWtsMINqrJLrRacOk9x`) — expressive, versatile American female |
+
+Voice IDs above are ElevenLabs premade voices — resolve for any account
+including free tier.
+
+### Endpoints
+```
+GET  /api/voice/config          — provider, dry_run, models, default voices, max chars
+GET  /api/voice/voices          — curated + account voice catalogue
+GET  /api/voice/recent          — last 50 synthesis events (surface, chars, dry-run)
+POST /api/voice/tts             — stream synthesised speech (body: {text, surface, voice_id?, model_id?})
+                                  Response: streaming audio/mpeg (real) or audio/wav (dry-run)
+                                  Headers: X-Voice-DryRun, X-Voice-Surface, X-Voice-Chars
+```
+
+### Frontend
+- **`useTts` hook** (`lib/useTts.ts`) — single hook that fetches from
+  `/api/voice/tts`, creates a Blob URL, hooks into a shared
+  `HTMLAudioElement` per instance, and exposes `{speak, stop, playing,
+  loading, dryRun, error}`. Handles autoplay-block fallback, aborts
+  concurrent requests, cleans up object URLs on unmount.
+- **`SpeakButton`** (`components/voice/SpeakButton.tsx`) — reusable button
+  in two variants (ghost icon-only + chip with label). Toggles play/stop,
+  shows loading spinner, degrades gracefully in dry-run.
+- **Wired into 3 surfaces:**
+  1. **Assistant bubbles in `/query`** — "READ ALOUD" button appears below
+     every completed assistant message.
+  2. **AI Summary modal** — chip button next to "Copy" to read the whole
+     deep-analyst brief.
+  3. **Notice draft** (`/notices`) — chip button next to the "Draft reply"
+     heading.
+  4. **CA-Friday voice assistant** — `speak()` now hands off to ElevenLabs
+     (with browser `speechSynthesis` as fallback if the request fails).
+
+### Config (`backend/.env`)
+```
+ELEVENLABS_API_KEY=sk_placeholder                    # dry-run when placeholder
+ELEVENLABS_DRY_RUN=true                              # forced on for placeholder
+ELEVENLABS_VOICE_ID=9BWtsMINqrJLrRacOk9x             # Aria (read-aloud default)
+ELEVENLABS_FRIDAY_VOICE_ID=Xb7hH8MSUJpSbSDYk0k2      # Alice (Friday default)
+ELEVENLABS_LONG_MODEL=eleven_multilingual_v2
+ELEVENLABS_FRIDAY_MODEL=eleven_flash_v2_5
+```
+
+### Going live
+1. Sign up at https://elevenlabs.io and grab an API key from
+   `/app/settings/api-keys` (free tier gives 10k chars/month).
+2. Optional: pick a preferred voice from the ElevenLabs library
+   (e.g. Indian-English voices for local flavour) and note its `voice_id`.
+3. Update `backend/.env`: `ELEVENLABS_API_KEY=sk_...` and
+   `ELEVENLABS_DRY_RUN=false`. Optionally update `ELEVENLABS_VOICE_ID` /
+   `ELEVENLABS_FRIDAY_VOICE_ID`.
+4. `sudo supervisorctl restart backend`.
+5. Verify `GET /api/voice/config` returns `dry_run: false`.
+6. Reload the app — every `SpeakButton` now returns real audio, and
+   Friday speaks with the ElevenLabs voice.
+
+### Verified in preview (dry-run mode)
+- `POST /api/voice/tts` streams a valid WAV file end-to-end (22 KB,
+  `RIFF...WAVE` header, silent).
+- Response headers surface `X-Voice-DryRun: true`, `X-Voice-Surface:
+  friday|read_aloud`, `X-Voice-Chars: <count>`.
+- Chat "READ ALOUD" button on assistant messages triggers a successful
+  synthesis call (verified via network intercept).
+- AI Summary modal chip button synthesises the full brief.
+- Notice draft chip button reads the drafted reply.
+- Friday voice-out routes through ElevenLabs first, falls back to browser
+  TTS on error.

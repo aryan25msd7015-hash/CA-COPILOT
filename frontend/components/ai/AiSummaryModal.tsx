@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { BrainCircuit, Loader2, Sparkles, X } from 'lucide-react';
 import { api } from '@/lib/api';
+import SpeakButton from '@/components/voice/SpeakButton';
 
 interface AiSummaryResponse {
   artifact_type: string;
@@ -144,13 +145,22 @@ export default function AiSummaryModal({ artifactType, artifact, onClose, open }
                 <div className="font-mono text-[10px] uppercase tracking-widest text-cyan-400">
                   Result · {result.model}
                 </div>
-                <button
-                  onClick={() => navigator.clipboard.writeText(result.summary_markdown)}
-                  className="rounded-lg border border-slate-700 px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-slate-300 hover:bg-slate-800"
-                  data-testid="btn-copy-summary"
-                >
-                  Copy
-                </button>
+                <div className="flex items-center gap-2">
+                  <SpeakButton
+                    text={result.summary_markdown.replace(/\*\*/g, '')}
+                    surface="read_aloud"
+                    variant="chip"
+                    label="Read aloud"
+                    testId="btn-speak-ai-summary"
+                  />
+                  <button
+                    onClick={() => navigator.clipboard.writeText(result.summary_markdown)}
+                    className="rounded-lg border border-slate-700 px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-slate-300 hover:bg-slate-800"
+                    data-testid="btn-copy-summary"
+                  >
+                    Copy
+                  </button>
+                </div>
               </div>
               <MarkdownLite text={result.summary_markdown} />
               <button

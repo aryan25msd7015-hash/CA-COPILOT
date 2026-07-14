@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bot, Loader2, MessageSquare, Plus, Send, Sparkles, Trash2, User as UserIcon } from 'lucide-react';
 import { api } from '@/lib/api';
 import PageHeader from '@/components/shared/PageHeader';
+import SpeakButton from '@/components/voice/SpeakButton';
 
 interface StarterPrompt { category: string; intent: string; prompt: string; recommended: boolean; }
 interface ChatSession {
@@ -416,6 +417,14 @@ function MessageBubble({
         <div className="whitespace-pre-wrap">{content}</div>
         {streaming && (
           <span className="ml-1 inline-block h-3 w-1.5 animate-pulse bg-cyan-400 align-middle" />
+        )}
+        {!isUser && !streaming && content.trim().length > 0 && (
+          <div className="mt-2 flex items-center gap-1 border-t border-slate-800 pt-2">
+            <SpeakButton text={content} surface="read_aloud" testId="btn-speak-assistant" />
+            <span className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+              Read aloud
+            </span>
+          </div>
         )}
       </div>
     </div>
