@@ -1,6 +1,8 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
+import { BrainCircuit } from 'lucide-react';
+import AiSummaryModal from '@/components/ai/AiSummaryModal';
 import { useQuery } from '@tanstack/react-query';
 import type { ColDef, ICellRendererParams } from 'ag-grid-community';
 import { api } from '@/lib/api';
@@ -49,6 +51,7 @@ export default function AnomaliesPage() {
   const [minRisk, setMinRisk] = useState('0');
   const [search, setSearch] = useState('');
   const [noteById, setNoteById] = useState<Record<string, string>>({});
+  const [aiTarget, setAiTarget] = useState<Flag | null>(null);
   const clients = useQuery<Client[]>({ queryKey: ['clients'], queryFn: () => api.get('/clients').then(r => r.data) });
   const summary = useQuery<Summary>({ queryKey: ['anomaly-summary'], queryFn: () => api.get('/anomalies/summary').then(r => r.data) });
   const query = useQuery<Flag[]>({
@@ -97,7 +100,7 @@ export default function AnomaliesPage() {
     { field: 'details', headerName: 'Details', minWidth: 260, valueFormatter: p => JSON.stringify(p.value || {}) },
     {
       headerName: 'Decision',
-      minWidth: 430,
+      minWidth: 480,
       sortable: false,
       filter: false,
       cellRenderer: (p: ICellRendererParams<Flag>) => <div className="flex h-full items-center gap-2">
@@ -111,6 +114,13 @@ export default function AnomaliesPage() {
         {p.data && <button onClick={() => review(p.data!, 'needs_followup')} className="text-xs text-amber-700">Follow up</button>}
         {p.data && <button onClick={() => review(p.data!, 'false_positive')} className="text-xs text-green-700">False positive</button>}
         {p.data && p.data.review_status !== 'open' && <button onClick={() => review(p.data!, 'open')} className="text-xs text-gray-600">Reopen</button>}
+        {p.data && <button
+          onClick={() => setAiTarget(p.data!)}
+          className="flex items-center gap-1 rounded border border-cyan-700 bg-cyan-950/40 px-1.5 py-0.5 text-xs text-cyan-200 hover:bg-cyan-900/50"
+          data-testid={`btn-ai-anomaly-${p.data.id}`}
+        >
+          <BrainCircuit className="h-3 w-3" /> AI Summary
+        </button>}
       </div>,
     },
   ], [noteById, review]);
@@ -138,5 +148,11 @@ export default function AnomaliesPage() {
       </select>
     </div>
     <DataGrid rows={query.data || []} columns={columns} pageSize={20} />
+    <AiSummaryModal
+      artifactType="anomaly"
+      artifact={aiTarget as unknown as Record<string, unknown> | null}
+      open={!!aiTarget}
+      onClose={() => setAiTarget(null)}
+    />
   </div>;
 }

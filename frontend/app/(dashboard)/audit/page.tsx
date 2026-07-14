@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { BrainCircuit } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Client } from '@/types';
 import ClientSelect from '@/components/shared/ClientSelect';
@@ -8,6 +9,7 @@ import FileUploadZone from '@/components/shared/FileUploadZone';
 import PageHeader from '@/components/shared/PageHeader';
 import TaskStatusPoller from '@/components/shared/TaskStatusPoller';
 import StatusBadge from '@/components/shared/StatusBadge';
+import AiSummaryModal from '@/components/ai/AiSummaryModal';
 
 interface AuditResult {
   ratios?: Record<string, number>;
@@ -22,6 +24,7 @@ export default function AuditPage() {
   const [documentId, setDocumentId] = useState('');
   const [taskId, setTaskId] = useState<string | null>(null);
   const [result, setResult] = useState<AuditResult | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
   const clients = useQuery<Client[]>({ queryKey: ['clients'], queryFn: () => api.get('/clients').then(r => r.data) });
   async function generate() {
     const response = await api.post('/audit-papers/generate', { document_id: documentId, period: 'Current financial year' });
@@ -49,10 +52,25 @@ export default function AuditPage() {
             {result.generated_at && <span>Generated: {new Date(result.generated_at).toLocaleString('en-IN')}</span>}
           </div>
         </div>
-        <button onClick={download} className="rounded border px-3 py-2 text-sm text-blue-700">Download DOCX</button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setAiOpen(true)}
+            className="flex items-center gap-1 rounded-lg border border-cyan-700 bg-cyan-950/40 px-3 py-2 text-sm text-cyan-200 hover:bg-cyan-900/50"
+            data-testid="btn-ai-audit"
+          >
+            <BrainCircuit className="h-4 w-4" /> AI Summary
+          </button>
+          <button onClick={download} className="rounded border px-3 py-2 text-sm text-blue-700">Download DOCX</button>
+        </div>
       </div>
       <div className="grid gap-3 md:grid-cols-4">{Object.entries(result.ratios || {}).map(([key, value]) => <div key={key} className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-500">{key.replaceAll('_', ' ')}</p><p className="mt-1 font-semibold">{value}</p></div>)}</div>
       <pre className="whitespace-pre-wrap rounded-lg bg-gray-50 p-4 text-sm leading-6 text-gray-700">{result.observations}</pre>
     </div>}
+    <AiSummaryModal
+      artifactType="audit-paper"
+      artifact={result as unknown as Record<string, unknown> | null}
+      open={aiOpen}
+      onClose={() => setAiOpen(false)}
+    />
   </div>;
 }

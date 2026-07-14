@@ -21,9 +21,10 @@ from typing import Any, Dict, List
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 import resend_mailer as mailer
+import gemini_chat as gem
 
 app = FastAPI(title="CA Copilot · Preview Stub", version="0.1.0")
 
@@ -441,8 +442,204 @@ def tasks_list():
     return _client_rows("tsk", ["queued", "running", "completed", "failed"], 20)
 
 @app.get("/api/query/saved")
-@app.get("/api/query")
 def query_saved(): return []
+
+@app.get("/api/query")
+def query_root(): return {"provider": "gemini", "model": gem.GEMINI_CHAT_MODEL}
+
+
+# ---------------------------------------------------------------------------
+# Gemini chat — Ask CA Copilot, Friday, Deep Analyst
+# ---------------------------------------------------------------------------
+
+_STARTUP_DONE = False
+
+
+@app.on_event("startup")
+async def _bootstrap_gemini():
+    global _STARTUP_DONE
+    if _STARTUP_DONE:
+        return
+    await gem.ensure_indexes()
+    _STARTUP_DONE = True
+
+
+def _demo_user() -> Dict[str, str]:
+    """Preview stub always uses the demo identity. Real backend swaps this
+    for the JWT-authenticated user."""
+    return {"org_id": DEMO_USER["org_id"], "user_id": DEMO_USER["sub"]}
+
+
+@app.get("/api/query/starters")
+def query_starters():
+    return gem.STARTER_PROMPTS
+
+
+@app.get("/api/query/config")
+def query_config():
+    return {
+        "provider": "gemini",
+        "chat_model": gem.GEMINI_CHAT_MODEL,
+        "friday_model": gem.GEMINI_FRIDAY_MODEL,
+        "deep_model": gem.GEMINI_DEEP_MODEL,
+        "configured": bool(gem.EMERGENT_LLM_KEY),
+    }
+
+
+@app.get("/api/query/sessions")
+async def query_list_sessions():
+    who = _demo_user()
+    sessions = await gem.list_sessions(who["org_id"], who["user_id"])
+    return sessions
+
+
+@app.post("/api/query/sessions")
+async def query_create_session(request: Request):
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        pass
+    who = _demo_user()
+    title = (body.get("title") or "New chat").strip() or "New chat"
+    session = await gem.create_session(
+        org_id=who["org_id"], user_id=who["user_id"], surface="chat", title=title
+    )
+    return session
+
+
+@app.get("/api/query/sessions/{sid}")
+async def query_get_session(sid: str):
+    s = await gem.get_session(sid)
+    if not s:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return s
+
+
+@app.get("/api/query/sessions/{sid}/messages")
+async def query_session_messages(sid: str):
+    return await gem.get_messages(sid)
+
+
+@app.delete("/api/query/sessions/{sid}")
+async def query_delete_session(sid: str):
+    who = _demo_user()
+    ok = await gem.delete_session(sid, who["user_id"])
+    return {"ok": ok}
+
+
+@app.post("/api/query/ask")
+async def query_ask_stream(request: Request):
+    """Streaming chat endpoint — Server-Sent Events. Body: {session_id, question}.
+    If session_id is missing, a new session is created on the fly."""
+    body = await request.json()
+    question = (body.get("question") or "").strip()
+    session_id = (body.get("session_id") or "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="question is required")
+
+    if not session_id:
+        who = _demo_user()
+        s = await gem.create_session(org_id=who["org_id"], user_id=who["user_id"])
+        session_id = s["id"]
+
+    async def event_gen():
+        # Emit the session_id up-front so the client can persist it.
+        yield f"event: session\ndata: {json.dumps({'session_id': session_id})}\n\n"
+        try:
+            async for delta in gem.stream_chat(session_id, question):
+                # SSE data lines must not contain raw newlines; encode as JSON.
+                yield f"event: delta\ndata: {json.dumps({'text': delta})}\n\n"
+            yield "event: done\ndata: {}\n\n"
+        except Exception as exc:  # noqa
+            yield f"event: error\ndata: {json.dumps({'detail': str(exc)})}\n\n"
+
+    return StreamingResponse(
+        event_gen(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
+
+
+@app.post("/api/query/ask-now")
+async def query_ask_now(request: Request):
+    """Non-streaming version used by the older 'Run query' button and by
+    the Voice Assistant / Friday flow — returns the full answer at once."""
+    body = await request.json()
+    question = (body.get("question") or "").strip()
+    session_id = (body.get("session_id") or "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="question is required")
+
+    if not session_id:
+        who = _demo_user()
+        s = await gem.create_session(org_id=who["org_id"], user_id=who["user_id"])
+        session_id = s["id"]
+
+    buf: List[str] = []
+    async for delta in gem.stream_chat(session_id, question):
+        buf.append(delta)
+    answer = "".join(buf)
+    return {
+        "session_id": session_id,
+        "answer": answer,
+        "provider": "gemini",
+        "model": gem.GEMINI_CHAT_MODEL,
+        "question": question,
+    }
+
+
+@app.post("/api/query/friday")
+async def query_friday(request: Request):
+    """Friday quick-fire — single-turn, no persistence, ≤ 40 words."""
+    body = await request.json()
+    question = (body.get("question") or body.get("command") or "").strip()
+    context = body.get("context")
+    if not question:
+        raise HTTPException(status_code=400, detail="question is required")
+    answer = await gem.friday_answer(question, context=context)
+    return {"answer": answer, "provider": "gemini", "model": gem.GEMINI_FRIDAY_MODEL}
+
+
+# ---------------------------------------------------------------------------
+# Deep Analyst — structured summaries on anomaly / notice / audit-paper artifacts
+# ---------------------------------------------------------------------------
+
+
+async def _run_deep(artifact_type: str, artifact: Dict[str, Any]) -> Dict[str, Any]:
+    summary = await gem.deep_analyst(artifact_type=artifact_type, artifact=artifact)
+    return {
+        "artifact_type": artifact_type,
+        "summary_markdown": summary,
+        "provider": "gemini",
+        "model": gem.GEMINI_DEEP_MODEL,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@app.post("/api/ai/summarize/anomaly")
+async def ai_summary_anomaly(request: Request):
+    body = await request.json()
+    artifact = body.get("artifact") or body
+    return await _run_deep("anomaly", artifact)
+
+
+@app.post("/api/ai/summarize/notice")
+async def ai_summary_notice(request: Request):
+    body = await request.json()
+    artifact = body.get("artifact") or body
+    return await _run_deep("notice", artifact)
+
+
+@app.post("/api/ai/summarize/audit-paper")
+async def ai_summary_audit(request: Request):
+    body = await request.json()
+    artifact = body.get("artifact") or body
+    return await _run_deep("audit_paper", artifact)
 
 @app.get("/api/events")
 def events(): return {"items": []}

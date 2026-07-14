@@ -269,7 +269,16 @@ export default function VoiceAssistant() {
         return;
       }
 
-      answer('I need a clearer mission. I can navigate, brief today, scan high-risk clients, create a task, or send a CA query.');
+      // Fallback: hand off to Gemini via /api/query/friday
+      try {
+        const fresh = await loadTelemetry();
+        const context = `Clients: ${fresh.clients} · High-risk: ${fresh.highRisk} · Deadlines visible: ${fresh.deadlines} · Autopilot exceptions: ${fresh.exceptions} · Agent status: ${fresh.agentStatus} (${fresh.agentCount} agents).`;
+        const resp = await api.post<{ answer: string }>('/query/friday', { question: command, context });
+        answer(resp.data.answer || 'Signal received, no output.');
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Friday link degraded';
+        answer(`Mission interrupted: ${msg}`);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown failure';
       answer(`Mission interrupted: ${message}`);

@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { BrainCircuit } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Client } from '@/types';
 import ClientSelect from '@/components/shared/ClientSelect';
@@ -9,6 +10,7 @@ import FileUploadZone from '@/components/shared/FileUploadZone';
 import PageHeader from '@/components/shared/PageHeader';
 import TaskStatusPoller from '@/components/shared/TaskStatusPoller';
 import StatusBadge from '@/components/shared/StatusBadge';
+import AiSummaryModal from '@/components/ai/AiSummaryModal';
 import type { ColDef, ICellRendererParams } from 'ag-grid-community';
 
 interface DraftResult {
@@ -47,6 +49,7 @@ export default function NoticesPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [listClientId, setListClientId] = useState('');
   const [search, setSearch] = useState('');
+  const [aiTarget, setAiTarget] = useState<NoticeRow | null>(null);
   const clients = useQuery<Client[]>({ queryKey: ['clients'], queryFn: () => api.get('/clients').then(r => r.data) });
   const notices = useQuery<NoticeRow[]>({
     queryKey: ['notices', statusFilter, listClientId, search],
@@ -83,10 +86,19 @@ export default function NoticesPage() {
     { field: 'draft_error', headerName: 'Error', minWidth: 220, valueFormatter: p => String(p.value || '-') },
     {
       headerName: 'Actions',
-      minWidth: 150,
+      minWidth: 220,
       sortable: false,
       filter: false,
-      cellRenderer: (p: ICellRendererParams<NoticeRow>) => <button onClick={() => { if (p.data) { setDocumentId(p.data.id); setResult(p.data.draft_result || null); setTaskId(p.data.task_id || null); } }} className="text-xs text-blue-700">Open</button>,
+      cellRenderer: (p: ICellRendererParams<NoticeRow>) => <div className="flex h-full items-center gap-2">
+        <button onClick={() => { if (p.data) { setDocumentId(p.data.id); setResult(p.data.draft_result || null); setTaskId(p.data.task_id || null); } }} className="text-xs text-blue-700">Open</button>
+        {p.data && <button
+          onClick={() => setAiTarget(p.data!)}
+          className="flex items-center gap-1 rounded border border-cyan-700 bg-cyan-950/40 px-1.5 py-0.5 text-xs text-cyan-200 hover:bg-cyan-900/50"
+          data-testid={`btn-ai-notice-${p.data.id}`}
+        >
+          <BrainCircuit className="h-3 w-3" /> AI Summary
+        </button>}
+      </div>,
     },
   ];
 
@@ -139,5 +151,11 @@ export default function NoticesPage() {
       <h2 className="font-medium text-gray-900">Draft reply</h2><pre className="whitespace-pre-wrap rounded-lg bg-gray-50 p-4 text-sm leading-6 text-gray-800">{result.draft}</pre>
       <details><summary className="cursor-pointer text-sm font-medium text-blue-700">Verified source chunks</summary><div className="mt-3 space-y-3">{(result.source_chunks || []).map((chunk, i) => <p key={i} className="rounded bg-gray-50 p-3 text-xs text-gray-600">{chunk}</p>)}</div></details>
     </div>}
+    <AiSummaryModal
+      artifactType="notice"
+      artifact={aiTarget as unknown as Record<string, unknown> | null}
+      open={!!aiTarget}
+      onClose={() => setAiTarget(null)}
+    />
   </div>;
 }

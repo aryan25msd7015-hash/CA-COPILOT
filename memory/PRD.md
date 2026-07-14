@@ -254,3 +254,60 @@ EMAIL_RENDER_URL=http://localhost:3000/emails-render
 - Auto-triggered flows populate `/api/email/recent`.
 - Webhook `email.bounced` events auto-add the recipient to `/api/email/bounced`;
   subsequent sends to that address return `status: skipped_bounced`.
+
+
+## Gemini chat integration (Jul 2026)
+
+Real Google Gemini models wired via `emergentintegrations` (using the universal Emergent LLM key). Powers three surfaces.
+
+### Architecture
+- **`gemini_chat.py`** — LlmChat wrapper with MongoDB persistence (`chat_sessions`, `chat_messages` collections), history replay across process restarts, and three system prompts (chat / friday / deep analyst — command-deck operator voice).
+- **Streaming**: `stream_message()` piped over SSE with `X-Accel-Buffering: no` header so tokens arrive in real time (no nginx buffering).
+- **Fresh chat instance per call** per playbook: `LlmChat` is recreated for every turn and seeded with prior messages from Mongo.
+
+### Model mix
+| Surface | Endpoint | Model | Style |
+|---|---|---|---|
+| Ask CA Copilot chat | `POST /api/query/ask` (SSE), `POST /api/query/ask-now` | `gemini-2.5-flash` | Multi-turn, cites Act sections |
+| CA-Friday quick-fire | `POST /api/query/friday` | `gemini-2.5-flash` | Single-turn, ≤40 words |
+| Deep Analyst | `POST /api/ai/summarize/{anomaly,notice,audit-paper}` | `gemini-2.5-pro` | Structured brief: SIGNAL → RISK → ACTIONS → REFERENCES → DRAFT |
+
+Note: user asked for `gemini-2.5-flash-lite` for Friday but it's not in the verified playbook list — substituted `gemini-2.5-flash` (already very fast).
+
+### New endpoints
+```
+GET    /api/query/config                       — provider + models + status
+GET    /api/query/starters                     — CA-firm starter prompts (8, grouped)
+GET    /api/query/sessions                     — list chat sessions
+POST   /api/query/sessions                     — create session
+GET    /api/query/sessions/{id}                — session metadata
+GET    /api/query/sessions/{id}/messages       — full message history
+DELETE /api/query/sessions/{id}                — delete session + its messages
+POST   /api/query/ask                          — streaming SSE chat (session_id + question)
+POST   /api/query/ask-now                      — non-streaming version
+POST   /api/query/friday                       — quick-fire fallback for Voice Assistant
+POST   /api/ai/summarize/anomaly               — deep analyst on anomaly row
+POST   /api/ai/summarize/notice                — deep analyst on notice row
+POST   /api/ai/summarize/audit-paper           — deep analyst on audit result
+```
+
+### Frontend
+- **`/query` page** — rebuilt as a full chat interface: sessions rail (left), streaming conversation panel (center), starter signals rail (right), gradient composer with Enter-to-send / Shift-Enter-for-newline, auto-titled sessions from the first user turn.
+- **Voice Assistant Friday** (`components/assistant/VoiceAssistant.tsx`) — the fallback branch (previously "I need a clearer mission") now calls `POST /api/query/friday` with workspace telemetry as context. Every command that doesn't match a rule gets a real AI answer.
+- **`AiSummaryModal`** (`components/ai/AiSummaryModal.tsx`) — reusable Gemini 2.5 Pro deep-analyst modal. Wired into `/anomalies` (per-row button), `/notices` (per-row button), and `/audit` (header button). Renders the structured brief with a tiny in-house markdown renderer.
+
+### Config (`backend/.env`)
+```
+EMERGENT_LLM_KEY=sk-emergent-...    # universal key from Emergent profile
+GEMINI_CHAT_MODEL=gemini-2.5-flash
+GEMINI_FRIDAY_MODEL=gemini-2.5-flash
+GEMINI_DEEP_MODEL=gemini-2.5-pro
+```
+
+### Verified in preview
+- `POST /api/query/ask-now` returns clean paragraph answer citing Sections 43B(h) IT Act + Section 15 MSMED Act.
+- `POST /api/query/ask` streams SSE deltas end-to-end; the browser UI displays them character-by-character with a pulse cursor.
+- `POST /api/query/friday` returns a ≤40-word answer.
+- `POST /api/ai/summarize/anomaly` returns the structured brief in <15s with proper section headings and severity-tagged risks.
+- Session persistence: reload survives — sessions rail shows history, messages replay.
+- Bounce-on-thin-signal: when the artifact is under-specified, deep analyst politely says "Insufficient signal — request X" instead of hallucinating.
