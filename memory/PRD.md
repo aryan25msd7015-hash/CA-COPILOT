@@ -191,3 +191,66 @@ The very first user in a brand-new org is always promoted to `partner` (founding
 ### Verified in preview
 - `/login` shows "Continue with Google" + Google G icon + SSO chip.
 - `/auth/callback#session_id=xxxxxx` renders the HUD "Access granted" card, then full-page navigates to `/` with the Google user signed in (visible in the sidebar profile capsule).
+
+
+## Resend transactional email (Jul 2026)
+
+Real email delivery wired into the preview backend, powered by React Email HUD-branded templates.
+
+### Architecture
+- **Templates**: 12 React Email components in `/app/frontend/emails/` sharing a
+  `HudShell` wrapper (dark HUD, cyan/violet gradient panels, mono captions).
+- **Renderer**: Next.js route `POST /emails-render` (path is deliberately outside `/api/*` so the Kubernetes
+  ingress doesn't route it to the backend). Takes `{template, props}` → returns `{subject, html, text}`.
+- **Send layer**: `/app/backend/resend_mailer.py` renders via HTTP call to the Next.js renderer, then sends via the
+  official `resend` Python SDK (`asyncio.to_thread` — non-blocking).
+- **Webhook receiver**: `POST /api/email/webhook` verifies Svix signature (via `svix` package), records
+  delivery/bounce/complaint events, auto-blacklists bounced/complained recipients so future sends short-circuit.
+- **Preview studio**: `/email-preview` dashboard page — sidebar link, live iframe render of every template.
+
+### Templates (12)
+Transactional: `password_reset`, `email_verification`, `user_invitation`
+Billing: `invoice_sent`, `payment_received`, `invoice_overdue`,
+`subscription_activated`, `subscription_cancelled`, `subscription_halted`
+Portal: `document_request`, `report_ready`, `portal_invite`
+
+### Auto-fired flows (preview backend)
+| Endpoint | Template |
+|---|---|
+| `POST /api/auth/register` | `email_verification` |
+| `POST /api/auth/password-reset/request` | `password_reset` |
+| `POST /api/users/invitations` (new) | `user_invitation` |
+| `POST /api/billing/invoices` | `invoice_sent` |
+| `POST /api/billing/invoices/{iid}/payments` | `payment_received` |
+| `POST /api/billing/invoices/{iid}/remind` (new) | `invoice_overdue` |
+| `POST /api/razorpay/subscriptions` | `subscription_activated` |
+| `DELETE /api/razorpay/subscriptions/{sid}` | `subscription_cancelled` |
+| `POST /api/portal/document-requests` (new) | `document_request` |
+| `POST /api/portal/reports/notify` (new) | `report_ready` |
+| `POST /api/portal/invite` (new) | `portal_invite` |
+
+### Config (`backend/.env`)
+```
+RESEND_API_KEY=re_placeholder          # dry-run when placeholder
+RESEND_FROM_EMAIL=onboarding@resend.dev
+RESEND_FROM_NAME=CA Copilot
+RESEND_WEBHOOK_SECRET=whsec_placeholder
+RESEND_DRY_RUN=true                    # forced on for re_placeholder
+EMAIL_RENDER_URL=http://localhost:3000/emails-render
+```
+
+### Going live (swap placeholder → real key)
+1. Get a Resend API key at https://resend.com/api-keys.
+2. Verify your sending domain (or use `onboarding@resend.dev` for dev).
+3. Update `backend/.env`: `RESEND_API_KEY=re_...` and `RESEND_DRY_RUN=false`.
+4. Create a webhook in Resend dashboard pointing to `https://<preview-url>/api/email/webhook`,
+   grab the signing secret, set `RESEND_WEBHOOK_SECRET=whsec_...`.
+5. `sudo supervisorctl restart backend`.
+6. Verify `GET /api/email/config` returns `dry_run: false` and `webhook_configured: true`.
+
+### Verified in preview (dry-run mode)
+- `/email-preview` renders all 12 templates in an iframe with live HUD styling.
+- `POST /api/email/test-send` returns `dry_run: true`, real subject from the rendered template.
+- Auto-triggered flows populate `/api/email/recent`.
+- Webhook `email.bounced` events auto-add the recipient to `/api/email/bounced`;
+  subsequent sends to that address return `status: skipped_bounced`.

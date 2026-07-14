@@ -9,6 +9,8 @@
     "lint": "node_modules/.bin/eslint ."
   },
   "dependencies": {
+    "@react-email/components": "^1.0.12",
+    "@react-email/render": "^2.1.0",
     "@tanstack/react-query": "^5.101.1",
     "ag-grid-community": "^32.3.0",
     "ag-grid-react": "^32.3.0",

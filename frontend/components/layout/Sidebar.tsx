@@ -6,7 +6,7 @@ import type { ComponentType } from 'react';
 import {
   BarChart3, Bot, BriefcaseBusiness, Building2, CalendarDays, ClipboardCheck,
   FileSearch, FileText, FolderOpen, Gauge, Landmark, LayoutDashboard,
-  LockKeyhole, MessageCircle, ReceiptIndianRupee, Search, ShieldCheck, ShieldAlert,
+  LockKeyhole, Mail, MessageCircle, ReceiptIndianRupee, Search, ShieldCheck, ShieldAlert,
   Sparkles, Target, UploadCloud, UsersRound,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -41,6 +41,7 @@ const ICONS: Record<string, ComponentType<{ className?: string }>> = {
   '/vault': LockKeyhole,
   '/whatsapp': MessageCircle,
   '/work': ClipboardCheck,
+  '/email-preview': Mail,
 };
 
 function initials(email: string) {

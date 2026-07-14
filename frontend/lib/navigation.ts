@@ -61,6 +61,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: '/vault', label: 'DSC & Password Vault', roles: ['partner', 'manager'], keywords: ['credentials', 'dsc', 'password'] },
       { href: '/reports', label: 'Reports & Saved Views', roles: ['partner', 'manager', 'article'], keywords: ['analytics', 'saved views'] },
       { href: '/diagnostics', label: 'Readiness Diagnostics', roles: ['partner', 'manager'], keywords: ['security', 'integrations', 'health'] },
+      { href: '/email-preview', label: 'Email Templates', roles: ['partner', 'manager'], keywords: ['email', 'resend', 'templates', 'preview'] },
     ],
   },
   {

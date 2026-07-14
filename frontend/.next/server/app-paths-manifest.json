@@ -1,4 +1,6 @@
 {
+  "/emails-render/route": "app/emails-render/route.js",
   "/(dashboard)/page": "app/(dashboard)/page.js",
+  "/(dashboard)/email-preview/page": "app/(dashboard)/email-preview/page.js",
   "/(auth)/login/page": "app/(auth)/login/page.js"
 }

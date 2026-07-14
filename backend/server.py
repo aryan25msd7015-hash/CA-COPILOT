@@ -19,9 +19,11 @@ import random
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+
+import resend_mailer as mailer
 
 app = FastAPI(title="CA Copilot · Preview Stub", version="0.1.0")
 
@@ -117,7 +119,18 @@ async def login(request: Request):
 async def register(request: Request):
     body = await request.json()
     email = (body.get("email") or DEMO_USER["email"]).lower()
+    org_name = body.get("org_name") or "Nova & Partners LLP"
     token = _fake_jwt(DEMO_USER["sub"], DEMO_USER["org_id"], "partner", email)
+    # Fire verification email
+    await mailer.send_email(
+        template="email_verification",
+        to=email,
+        props={
+            "user_name": email.split("@")[0].title(),
+            "verify_url": f"https://cacopilot.example.com/verify?token={token}",
+            "workspace_name": org_name,
+        },
+    )
     return {"access_token": token, "refresh_token": token, "token_type": "bearer"}
 
 @app.post("/api/auth/logout")
@@ -126,6 +139,18 @@ def logout():
 
 @app.post("/api/auth/password-reset/request")
 async def prr(request: Request):
+    body = await request.json()
+    email = (body.get("email") or "").strip().lower()
+    if email:
+        await mailer.send_email(
+            template="password_reset",
+            to=email,
+            props={
+                "user_name": email.split("@")[0].title(),
+                "reset_url": f"https://cacopilot.example.com/reset-password?token=demo-{random.randint(100000,999999)}",
+                "expires_in": "30 minutes",
+            },
+        )
     return {"ok": True, "token": "demo-reset-token"}
 
 @app.post("/api/auth/password-reset/confirm")
@@ -139,6 +164,28 @@ async def evc(request: Request):
 @app.post("/api/users/invitations/accept")
 async def acc(request: Request):
     return {"ok": True}
+
+
+@app.post("/api/users/invitations")
+async def users_invite(request: Request):
+    body = await request.json()
+    email = (body.get("email") or "").strip().lower()
+    role = (body.get("role") or "manager").title()
+    inviter = (body.get("inviter_name") or "Priya · Partner")
+    workspace = body.get("workspace_name") or "Nova & Partners LLP"
+    if email:
+        await mailer.send_email(
+            template="user_invitation",
+            to=email,
+            props={
+                "invitee_name": email.split("@")[0].title(),
+                "inviter_name": inviter,
+                "workspace_name": workspace,
+                "role": role,
+                "accept_url": f"https://cacopilot.example.com/register?invite=demo-{random.randint(100000,999999)}",
+            },
+        )
+    return {"ok": True, "invited": email, "role": role}
 
 @app.get("/api/users/me")
 def me():
@@ -477,101 +524,183 @@ async def rz_sub(request: Request):
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     _STUB_SUBS.append(row)
+
+    # Fire subscription_activated email
+    recipient = (body.get("email") or DEMO_USER["email"]).lower()
+    await mailer.send_email(
+        template="subscription_activated",
+        to=recipient,
+        props={
+            "workspace_name": body.get("workspace_name") or "Nova & Partners LLP",
+            "plan_name": plan["name"],
+            "amount_inr": plan["amount_inr"],
+            "next_charge_at": (datetime.now(timezone.utc) + timedelta(days=30)).strftime("%d %b %Y"),
+            "dashboard_url": "https://cacopilot.example.com/dashboard",
+        },
+    )
     return row
 
 @app.get("/api/razorpay/subscriptions")
 def rz_sub_list(): return _STUB_SUBS
 
 @app.delete("/api/razorpay/subscriptions/{sid}")
-def rz_sub_cancel(sid: str):
+async def rz_sub_cancel(sid: str, request: Request):
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        pass
     for r in _STUB_SUBS:
         if r["id"] == sid:
             r["status"] = "cancelled"
+            plan = next((p for p in PLANS if p["code"] == r.get("plan_code")), PLANS[0])
+            recipient = (body.get("email") or DEMO_USER["email"]).lower()
+            await mailer.send_email(
+                template="subscription_cancelled",
+                to=recipient,
+                props={
+                    "workspace_name": body.get("workspace_name") or "Nova & Partners LLP",
+                    "plan_name": plan["name"],
+                    "ends_at": (datetime.now(timezone.utc) + timedelta(days=30)).strftime("%d %b %Y"),
+                    "reactivate_url": "https://cacopilot.example.com/billing/reactivate",
+                },
+            )
             return {"ok": True, "id": sid, "status": "cancelled"}
     return {"ok": True, "id": sid, "status": "cancelled"}
 
 # ---------------------------------------------------------------------------
-# Resend — preview stub
+# Resend — real integration (dry-run when RESEND_API_KEY=re_placeholder)
 # ---------------------------------------------------------------------------
 
-_EMAIL_LOG: List[Dict[str, Any]] = []
-_EMAIL_TEMPLATES = [
-    "password_reset", "email_verification", "user_invitation",
-    "invoice_sent", "payment_received", "invoice_overdue",
-    "subscription_activated", "subscription_cancelled",
-    "document_request", "portal_invite", "report_ready",
-]
+# Seed demo rows so the Email Signals panel isn't empty on first load
+_CLIENTS_FOR_SEED = [{"name": c["name"], "email": c["email"]} for c in DEMO_CLIENTS[:14]]
+mailer.seed_demo_log(_CLIENTS_FOR_SEED)
 
-def _seed_email_log():
-    if _EMAIL_LOG:
-        return
-    for i in range(18):
-        seed = random.Random(i + 41)
-        tpl = seed.choice(_EMAIL_TEMPLATES)
-        _EMAIL_LOG.append({
-            "id": f"em-{i:04d}",
-            "resend_message_id": f"re_{seed.randbytes(8).hex()}",
-            "template": tpl,
-            "recipient": f"contact.{i}@{seed.choice(['aurora','helix','arcadia','lumen'])}.in",
-            "subject": {
-                "password_reset": "Reset your CA Copilot access key",
-                "email_verification": "Verify your CA Copilot email",
-                "user_invitation": "You've been invited to Nova & Partners on CA Copilot",
-                "invoice_sent": f"Invoice INV-2026-{1000 + i} · ₹{seed.randint(15, 250) * 1000:,}",
-                "payment_received": f"Payment received · ₹{seed.randint(15, 250) * 1000:,}",
-                "invoice_overdue": f"Reminder · Invoice INV-2026-{1000 + i} overdue",
-                "subscription_activated": "Your CA Copilot Pro subscription is live",
-                "subscription_cancelled": "Your CA Copilot subscription is scheduled to end",
-                "document_request": "New document request · Aurora Textiles",
-                "portal_invite": "You've been invited to your CA's secure portal",
-                "report_ready": "Your CA report is ready · GST reconciliation · Dec 2025",
-            }.get(tpl, "CA Copilot notification"),
-            "status": seed.choice(["delivered", "delivered", "delivered", "sent", "bounced", "delayed"]),
-            "dry_run": True,
-            "created_at": (datetime.now(timezone.utc) - timedelta(minutes=seed.randint(2, 4800))).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-            "tags": {"template": tpl, "org_id": "org-demo-001"},
-        })
 
 @app.get("/api/email/config")
 def email_config():
     return {
         "provider": "resend",
-        "dry_run": True,
-        "from": "CA Copilot <onboarding@resend.dev>",
-        "webhook_configured": False,
-        "preview_stub": True,
+        "dry_run": mailer.is_dry_run(),
+        "from": mailer.from_address(),
+        "webhook_configured": bool(
+            mailer.RESEND_WEBHOOK_SECRET
+            and not mailer.RESEND_WEBHOOK_SECRET.startswith("whsec_placeholder")
+        ),
+        "placeholder_key": mailer.is_placeholder(),
+        "templates": [
+            "password_reset", "email_verification", "user_invitation",
+            "invoice_sent", "payment_received", "invoice_overdue",
+            "subscription_activated", "subscription_cancelled", "subscription_halted",
+            "document_request", "report_ready", "portal_invite",
+        ],
+        "bounced_count": len(mailer.BOUNCED_ADDRESSES),
     }
+
 
 @app.get("/api/email/recent")
 def email_recent():
-    _seed_email_log()
-    return sorted(_EMAIL_LOG, key=lambda r: r["created_at"], reverse=True)
+    return sorted(mailer.EMAIL_LOG, key=lambda r: r.get("created_at") or "", reverse=True)[:100]
+
+
+@app.get("/api/email/events")
+def email_events():
+    return mailer.EMAIL_EVENTS[:100]
+
+
+@app.get("/api/email/bounced")
+def email_bounced():
+    return sorted(mailer.BOUNCED_ADDRESSES)
+
+
+_SAMPLE_PROPS: Dict[str, Dict[str, Any]] = {
+    "password_reset": {"user_name": "Priya", "reset_url": "https://cacopilot.example.com/reset?token=demo"},
+    "email_verification": {"user_name": "Priya", "verify_url": "https://cacopilot.example.com/verify?token=demo"},
+    "user_invitation": {"invitee_name": "Arjun", "inviter_name": "Priya · Partner", "role": "Manager",
+                        "accept_url": "https://cacopilot.example.com/invite?token=demo"},
+    "invoice_sent": {"client_name": "Aurora Textiles Pvt Ltd", "invoice_no": "INV-2026-1042",
+                     "amount_inr": 148500, "due_date": "15 Aug 2026",
+                     "view_url": "https://cacopilot.example.com/portal/invoices/inv-1042",
+                     "pay_url": "https://rzp.io/l/inv-1042"},
+    "payment_received": {"client_name": "Aurora Textiles Pvt Ltd", "invoice_no": "INV-2026-1042",
+                         "amount_inr": 148500, "paid_at": "14 Jul 2026 · 16:42 IST",
+                         "method": "Razorpay · UPI",
+                         "receipt_url": "https://cacopilot.example.com/receipts/inv-1042.pdf"},
+    "invoice_overdue": {"client_name": "Meridian Systems LLP", "invoice_no": "INV-2026-0921",
+                        "amount_inr": 84200, "days_overdue": 12,
+                        "pay_url": "https://rzp.io/l/inv-0921"},
+    "subscription_activated": {"plan_name": "Pro", "amount_inr": 5999,
+                               "next_charge_at": "14 Aug 2026",
+                               "dashboard_url": "https://cacopilot.example.com/dashboard"},
+    "subscription_cancelled": {"plan_name": "Pro", "ends_at": "31 Aug 2026",
+                               "reactivate_url": "https://cacopilot.example.com/billing/reactivate"},
+    "subscription_halted":    {"plan_name": "Pro", "reason": "card_declined",
+                               "update_payment_url": "https://cacopilot.example.com/billing/payment-method"},
+    "document_request": {"client_name": "Aurora Textiles Pvt Ltd", "ca_name": "Priya · Nova & Partners",
+                         "document_list": ["Bank statement · SBI · Q1 FY26", "GSTR-2B · June 2026"],
+                         "due_date": "20 Jul 2026",
+                         "upload_url": "https://cacopilot.example.com/portal/upload/req-42"},
+    "report_ready": {"client_name": "Aurora Textiles Pvt Ltd", "report_name": "GST Reconciliation",
+                     "period": "Jun 2026",
+                     "headline_metric": {"label": "Mismatched ITC", "value": "₹14,200", "tone": "warn"},
+                     "view_url": "https://cacopilot.example.com/portal/reports/rec-jun26"},
+    "portal_invite": {"contact_name": "Anil (Finance)", "ca_firm_name": "Nova & Partners LLP",
+                      "portal_url": "https://cacopilot.example.com/portal/enter?token=demo"},
+}
+
 
 @app.post("/api/email/test-send")
 async def email_test_send(request: Request):
+    """Render + send (or dry-run) a template with sample or user-supplied props."""
     body = await request.json()
-    _seed_email_log()
-    row = {
-        "id": f"em-test-{len(_EMAIL_LOG) + 1:04d}",
-        "resend_message_id": f"re_test_{random.randbytes(6).hex()}",
-        "template": body.get("template", "email_verification"),
-        "recipient": body.get("to", "test@example.com"),
-        "subject": f"Test signal · {body.get('template', 'email_verification')}",
-        "status": "delivered",
-        "dry_run": True,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-        "tags": {"template": body.get("template"), "org_id": "org-demo-001"},
+    template = (body.get("template") or "email_verification").strip()
+    to = (body.get("to") or "demo@cacopilot.example.com").strip()
+    props = body.get("props") or _SAMPLE_PROPS.get(template, {})
+    subject_override = body.get("subject")
+
+    entry = await mailer.send_email(
+        template=template, to=to, props=props, subject_override=subject_override
+    )
+    return {
+        "ok": entry.get("status") in {"sent", "delivered", "queued"},
+        "id": entry["id"],
+        "resend_message_id": entry.get("resend_message_id"),
+        "status": entry["status"],
+        "dry_run": entry["dry_run"],
+        "template": template,
+        "subject": entry["subject"],
+        "error": entry.get("error"),
     }
-    _EMAIL_LOG.insert(0, row)
-    return {"ok": True, "id": row["id"], "dry_run": True, "template": row["template"], "subject": row["subject"]}
+
 
 @app.post("/api/email/webhook")
 async def email_webhook(request: Request):
-    # In the preview stub we do not verify signature — real backend does.
-    body = await request.json()
-    return {"ok": True, "event": body.get("type") or body.get("event") or "unknown", "preview_stub": True}
+    """Resend/Svix webhook receiver — verifies signature, updates status, blacklists bounces."""
+    raw = await request.body()
+    try:
+        payload = mailer.verify_and_parse_webhook(raw, dict(request.headers))
+    except ValueError as exc:
+        return JSONResponse({"detail": str(exc)}, status_code=401)
+    except Exception as exc:  # noqa
+        return JSONResponse({"detail": f"parse error: {exc}"}, status_code=400)
+
+    svix_id = request.headers.get("svix-id") or request.headers.get("Svix-Id")
+    result = mailer.record_webhook_event(payload, svix_id=svix_id)
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Auto-fire real transactional flows on relevant existing endpoints
+# ---------------------------------------------------------------------------
+
+
+async def _fire(template: str, to: str, props: Dict[str, Any]) -> None:
+    """Fire-and-forget helper — never crashes the caller."""
+    try:
+        await mailer.send_email(template=template, to=to, props=props)
+    except Exception:  # noqa
+        import logging
+        logging.getLogger("ca_platform.email").exception("_fire failed for %s", template)
 
 # ---------------------------------------------------------------------------
 # Billing (used by the /billing page)
@@ -652,6 +781,24 @@ async def billing_create_invoice(request: Request):
         "payment_link": None,
     }
     _STUB_INVOICES.append(inv)
+
+    # Fire invoice_sent email
+    recipient = body.get("recipient_email") or next(
+        (c["email"] for c in DEMO_CLIENTS if c["id"] == inv["client_id"]),
+        "demo@cacopilot.example.com",
+    )
+    await mailer.send_email(
+        template="invoice_sent",
+        to=recipient,
+        props={
+            "client_name": inv["client_name"],
+            "invoice_no": inv["invoice_no"],
+            "amount_inr": int(inv["total"]),
+            "due_date": inv["due_date"] or "30 days",
+            "view_url": f"https://cacopilot.example.com/portal/invoices/{inv['id']}",
+            "pay_url": f"https://rzp.io/l/{inv['id'][-8:]}",
+        },
+    )
     return inv
 
 @app.patch("/api/billing/invoices/{iid}")
@@ -672,8 +819,51 @@ async def billing_pay(iid: str, request: Request):
             inv["amount_paid"] += amt
             inv["outstanding"] = max(inv["total"] - inv["amount_paid"], 0)
             inv["status"] = "paid" if inv["outstanding"] == 0 else "part_paid"
+
+            # Fire payment_received email
+            recipient = body.get("recipient_email") or next(
+                (c["email"] for c in DEMO_CLIENTS if c["id"] == inv.get("client_id")),
+                "demo@cacopilot.example.com",
+            )
+            await mailer.send_email(
+                template="payment_received",
+                to=recipient,
+                props={
+                    "client_name": inv["client_name"],
+                    "invoice_no": inv["invoice_no"],
+                    "amount_inr": int(amt),
+                    "paid_at": datetime.now(timezone.utc).strftime("%d %b %Y · %H:%M IST"),
+                    "method": body.get("mode") or "Razorpay",
+                    "receipt_url": f"https://cacopilot.example.com/receipts/{inv['id']}.pdf",
+                },
+            )
             return inv
     return {"ok": True}
+
+
+@app.post("/api/billing/invoices/{iid}/remind")
+async def billing_remind(iid: str, request: Request):
+    """Send an invoice_overdue reminder email."""
+    body = await request.json() if request.headers.get("content-length") else {}
+    for inv in _STUB_INVOICES:
+        if inv["id"] == iid:
+            recipient = (body or {}).get("recipient_email") or next(
+                (c["email"] for c in DEMO_CLIENTS if c["id"] == inv.get("client_id")),
+                "demo@cacopilot.example.com",
+            )
+            entry = await mailer.send_email(
+                template="invoice_overdue",
+                to=recipient,
+                props={
+                    "client_name": inv["client_name"],
+                    "invoice_no": inv["invoice_no"],
+                    "amount_inr": int(inv["outstanding"] or inv["total"]),
+                    "days_overdue": inv.get("days_overdue") or 1,
+                    "pay_url": inv.get("payment_link") or f"https://rzp.io/l/{inv['id'][-8:]}",
+                },
+            )
+            return {"ok": True, "email_id": entry["id"], "status": entry["status"]}
+    return {"ok": False, "error": "invoice not found"}
 
 @app.post("/api/billing/invoices/{iid}/payment-link")
 def billing_link(iid: str):
@@ -716,6 +906,61 @@ def portal_invoices():
     _seed_invoices()
     # Client portal sees only their own open invoices — for preview return a few.
     return [inv for inv in _STUB_INVOICES if inv["outstanding"] > 0][:6]
+
+
+# Portal actions that trigger emails
+@app.post("/api/portal/document-requests")
+async def portal_doc_request(request: Request):
+    body = await request.json()
+    recipient = (body.get("recipient_email") or "demo@cacopilot.example.com").lower()
+    entry = await mailer.send_email(
+        template="document_request",
+        to=recipient,
+        props={
+            "client_name": body.get("client_name") or "Client",
+            "ca_name": body.get("ca_name") or "Priya · Nova & Partners",
+            "document_list": body.get("document_list") or ["Bank statement · Q1 FY26"],
+            "due_date": body.get("due_date") or "in 7 days",
+            "upload_url": body.get("upload_url") or "https://cacopilot.example.com/portal/upload",
+        },
+    )
+    return {"ok": True, "email_id": entry["id"], "status": entry["status"]}
+
+
+@app.post("/api/portal/reports/notify")
+async def portal_report_ready(request: Request):
+    body = await request.json()
+    recipient = (body.get("recipient_email") or "demo@cacopilot.example.com").lower()
+    entry = await mailer.send_email(
+        template="report_ready",
+        to=recipient,
+        props={
+            "client_name": body.get("client_name") or "Client",
+            "report_name": body.get("report_name") or "Report",
+            "period": body.get("period") or "This month",
+            "headline_metric": body.get("headline_metric"),
+            "view_url": body.get("view_url") or "https://cacopilot.example.com/portal/reports",
+        },
+    )
+    return {"ok": True, "email_id": entry["id"], "status": entry["status"]}
+
+
+@app.post("/api/portal/invite")
+async def portal_invite(request: Request):
+    body = await request.json()
+    recipient = (body.get("recipient_email") or "").strip().lower()
+    if not recipient:
+        return JSONResponse({"detail": "recipient_email required"}, status_code=400)
+    entry = await mailer.send_email(
+        template="portal_invite",
+        to=recipient,
+        props={
+            "contact_name": body.get("contact_name") or recipient.split("@")[0].title(),
+            "ca_firm_name": body.get("ca_firm_name") or "Nova & Partners LLP",
+            "portal_url": body.get("portal_url") or "https://cacopilot.example.com/portal/enter",
+        },
+    )
+    return {"ok": True, "email_id": entry["id"], "status": entry["status"]}
 
 # Catch-all: return empty list for any other /api GET so pages don't 404.
 @app.get("/api/{full_path:path}")
