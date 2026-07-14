@@ -15,9 +15,10 @@ from __future__ import annotations
 import base64
 import json
 import time
+import uuid
 import random
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,6 +27,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 import resend_mailer as mailer
 import gemini_chat as gem
 import elevenlabs_tts as tts
+import storage_service as storage
 
 app = FastAPI(title="CA Copilot · Preview Stub", version="0.1.0")
 
@@ -324,16 +326,210 @@ def health_scores():
             for c in DEMO_CLIENTS]
 
 @app.get("/api/documents")
-def documents():
+async def documents(client_id: Optional[str] = None, doc_type: Optional[str] = None):
+    who = {"org_id": DEMO_USER["org_id"], "user_id": DEMO_USER["sub"]}
+    rows = await storage.list_documents(org_id=who["org_id"], client_id=client_id, doc_type=doc_type)
+    if rows:
+        return rows
+    # Empty vault → seed a bit of demo metadata so grids don't look empty
     return [{
-        "id": f"doc-{i:04d}",
+        "id": f"doc-seed-{i:04d}",
         "client_id": c["id"],
         "client_name": c["name"],
-        "kind": random.choice(["invoice", "purchase", "bank_statement", "gstr2b", "tally_export"]),
-        "status": random.choice(["ocr_complete", "processing", "queued", "ocr_failed"]),
-        "size_kb": random.randint(80, 3800),
+        "doc_type": random.choice(["invoice", "purchase", "bank_statement", "gstr2b", "tally_export"]),
+        "status": random.choice(["processed", "uploaded", "pending_upload"]),
+        "size": random.randint(80_000, 3_800_000),
+        "mime_type": "application/pdf",
+        "filename": f"demo-{i}.pdf",
         "created_at": (datetime.now(timezone.utc) - timedelta(hours=random.randint(1, 240))).isoformat(),
+        "storage_adapter": storage.STORAGE_ADAPTER,
+        "seed": True,
     } for i, c in enumerate(DEMO_CLIENTS[:15])]
+
+
+# ---------------------------------------------------------------------------
+# File & media storage — presigned upload + signed download
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/storage/config")
+def storage_config():
+    return {
+        "adapter": storage.get_adapter().name,
+        "url_ttl_seconds": storage.STORAGE_URL_TTL_SECONDS,
+        "max_upload_bytes": storage.STORAGE_MAX_UPLOAD_BYTES,
+        "allowed_mime_prefixes": list(storage.ALLOWED_MIME_PREFIXES),
+    }
+
+
+def _base_url(request: Request) -> str:
+    """Reconstruct the app's public base URL for building signed links."""
+    fwd_proto = request.headers.get("x-forwarded-proto")
+    fwd_host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+    if fwd_host:
+        proto = fwd_proto or request.url.scheme
+        return f"{proto}://{fwd_host}"
+    return str(request.base_url).rstrip("/")
+
+
+@app.post("/api/documents/upload-url")
+async def documents_upload_url(request: Request):
+    body = await request.json()
+    client_id = (body.get("client_id") or "").strip() or DEMO_CLIENTS[0]["id"]
+    doc_type = (body.get("doc_type") or "misc").strip()
+    filename = (body.get("filename") or "file.bin").strip()
+    file_size = int(body.get("file_size_bytes") or 0)
+    mime = (body.get("mime_type") or "application/octet-stream").strip()
+    who = {"org_id": DEMO_USER["org_id"], "user_id": DEMO_USER["sub"]}
+
+    try:
+        doc = await storage.create_document_placeholder(
+            org_id=who["org_id"],
+            client_id=client_id,
+            doc_type=doc_type,
+            filename=filename,
+            file_size_bytes=file_size,
+            mime_type=mime,
+            user_id=who["user_id"],
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    signed = storage.make_signed_token(document_id=doc["id"], op="upload")
+    upload_url = storage.build_upload_url(_base_url(request), signed["token"])
+
+    return {
+        "document_id": doc["id"],
+        "upload_url": upload_url,
+        "content_type": doc["mime_type"],
+        "expires_at": signed["expires_at"],
+        "storage_adapter": doc["storage_adapter"],
+        "max_bytes": storage.STORAGE_MAX_UPLOAD_BYTES,
+    }
+
+
+@app.put("/api/storage/upload/{token}")
+async def storage_upload(token: str, request: Request):
+    """Receive raw bytes for a presigned upload. Body is the file itself."""
+    ct = request.headers.get("content-type") or "application/octet-stream"
+    body = await request.body()
+    if not body:
+        raise HTTPException(status_code=400, detail="Empty request body")
+    if len(body) > storage.STORAGE_MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="File too large")
+    try:
+        result = await storage.handle_upload(token, body, ct)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return result
+
+
+@app.post("/api/documents/{doc_id}/process")
+async def documents_process(doc_id: str):
+    doc = await storage.get_document(doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    task_id = f"task-{uuid.uuid4().hex[:12]}"
+    await storage.mark_processed(doc_id, task_id=task_id)
+    return {
+        "task_id": task_id,
+        "document_id": doc_id,
+        "status": "queued",
+        "kind": doc.get("doc_type"),
+    }
+
+
+@app.get("/api/documents/{doc_id}")
+async def document_meta(doc_id: str):
+    doc = await storage.get_document(doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return doc
+
+
+@app.get("/api/documents/{doc_id}/pipeline")
+async def document_pipeline(doc_id: str):
+    doc = await storage.get_document(doc_id)
+    if not doc:
+        # Preview stub returns a demo pipeline for seed docs
+        return {
+            "status": "processed",
+            "extractions": [],
+            "events": [],
+            "last_pipeline_error_type": None,
+        }
+    return {
+        "status": doc.get("status"),
+        "extractions": [],
+        "events": [
+            {"id": f"ev-1", "stage": "uploaded",
+             "status": "ok", "created_at": doc.get("created_at"), "error_type": None},
+            {"id": f"ev-2", "stage": "processed",
+             "status": doc.get("status"), "created_at": doc.get("updated_at"), "error_type": None},
+        ],
+        "last_pipeline_error_type": None,
+    }
+
+
+@app.post("/api/documents/{doc_id}/retry-ocr")
+async def document_retry(doc_id: str):
+    task_id = f"task-{uuid.uuid4().hex[:12]}"
+    return {"task_id": task_id, "document_id": doc_id, "status": "queued"}
+
+
+@app.get("/api/documents/{doc_id}/download-url")
+async def documents_download_url(doc_id: str, request: Request):
+    doc = await storage.get_document(doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if doc.get("status") not in {
+        storage.DOC_STATUS_UPLOADED, storage.DOC_STATUS_PROCESSED, storage.DOC_STATUS_PROCESSING
+    }:
+        raise HTTPException(status_code=409, detail="Document not yet uploaded")
+    signed = storage.make_signed_token(document_id=doc_id, op="download")
+    download_url = storage.build_download_url(_base_url(request), signed["token"])
+    return {
+        "download_url": download_url,
+        "expires_at": signed["expires_at"],
+        "filename": doc["filename"],
+        "mime_type": doc["mime_type"],
+        "size": doc["size"],
+    }
+
+
+@app.get("/api/storage/download/{token}")
+async def storage_download(token: str):
+    try:
+        doc = await storage.download_document_meta(token)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    async def gen():
+        async for chunk in storage.stream_download(token):
+            yield chunk
+
+    return StreamingResponse(
+        gen(),
+        media_type=doc.get("mime_type") or "application/octet-stream",
+        headers={
+            "Content-Disposition": f'attachment; filename="{doc["filename"]}"',
+            "Cache-Control": "no-store",
+            "X-Storage-Adapter": doc.get("storage_adapter") or "gridfs",
+        },
+    )
+
+
+@app.delete("/api/documents/{doc_id}")
+async def documents_delete(doc_id: str):
+    ok = await storage.delete_document(doc_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return {"ok": True, "id": doc_id}
+
+
+@app.on_event("startup")
+async def _bootstrap_storage():
+    await storage.ensure_indexes()
 
 # ---------------------------------------------------------------------------
 # Autopilot
@@ -441,6 +637,20 @@ def integrations():
 @app.get("/api/tasks")
 def tasks_list():
     return _client_rows("tsk", ["queued", "running", "completed", "failed"], 20)
+
+
+@app.get("/api/tasks/{tid}/status")
+@app.get("/api/tasks/{tid}")
+def task_status(tid: str):
+    """Preview stub: any task_id resolves to SUCCESS after a beat.
+    Real backend polls Celery result store."""
+    return {
+        "task_id": tid,
+        "state": "SUCCESS",
+        "status": "SUCCESS",
+        "result": {"ok": True, "task_id": tid},
+        "error": None,
+    }
 
 @app.get("/api/query/saved")
 def query_saved(): return []

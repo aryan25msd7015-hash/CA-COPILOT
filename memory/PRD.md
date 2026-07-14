@@ -402,3 +402,98 @@ ELEVENLABS_FRIDAY_MODEL=eleven_flash_v2_5
 - Notice draft chip button reads the drafted reply.
 - Friday voice-out routes through ElevenLabs first, falls back to browser
   TTS on error.
+
+
+## File & media storage integration (Jul 2026)
+
+Presigned-URL upload + signed-URL download backed by MongoDB GridFS, with
+a clean adapter interface so S3/R2/GCS drop in without touching routers.
+
+### Architecture
+- **`storage_service.py`** — abstract `StorageAdapter` interface and a
+  default `GridFsAdapter` implementation using
+  `AsyncIOMotorGridFSBucket`. To add S3/R2, just implement `put_bytes`,
+  `stream`, `delete` and register in `get_adapter()`.
+- **HMAC-signed tokens** — every upload/download URL carries a
+  base64url(json{document_id, op, expires_at, nonce}) + HMAC-SHA256
+  signature, signed with `STORAGE_SIGNING_SECRET`. 5-min TTL by default.
+- **Presigned upload flow**:
+  1. `POST /api/documents/upload-url` mints a placeholder document row
+     and a signed URL: `PUT /api/storage/upload/{token}`.
+  2. Client PUTs raw bytes directly to that URL (bypasses the JSON
+     endpoints so large files don't hit request body limits).
+  3. Backend verifies signature, streams bytes into GridFS, records
+     size + SHA-256, flips status → `uploaded`.
+  4. `POST /api/documents/{id}/process` flips → `processed` and returns
+     a task_id for the existing pipeline poller.
+- **Signed downloads**: `GET /api/documents/{id}/download-url` mints a
+  signed link → `GET /api/storage/download/{token}` streams the file
+  from GridFS with `Content-Disposition: attachment` header.
+- **Security**: MIME whitelist (`application/pdf`, Office docs, images,
+  text, zip), 100 MB size cap, tokens are one-op (upload vs download
+  can't be confused), signature-tampering is rejected, expired tokens
+  are rejected.
+
+### Endpoints
+```
+GET    /api/storage/config                   — adapter, TTL, size limits, allowed MIMEs
+POST   /api/documents/upload-url             — mint signed upload URL (body: client_id, doc_type, filename, size, mime)
+PUT    /api/storage/upload/{token}           — accept raw bytes
+POST   /api/documents/{id}/process           — mark processed, return task_id
+GET    /api/documents                        — list (filter by client_id, doc_type)
+GET    /api/documents/{id}                   — metadata
+GET    /api/documents/{id}/download-url      — mint signed download URL
+GET    /api/storage/download/{token}         — stream the file (audio/pdf/etc.)
+GET    /api/documents/{id}/pipeline          — pipeline events (stub)
+POST   /api/documents/{id}/retry-ocr         — retry stub
+DELETE /api/documents/{id}                   — delete metadata + GridFS bytes
+GET    /api/tasks/{id}/status                — poll task (stub: always SUCCESS)
+```
+
+### Frontend
+- Existing `FileUploadZone` already speaks the presign flow — plugged in
+  without changes.
+- **`/documents` page** — added a **Download** button in the grid Action
+  column that hits `/documents/{id}/download-url` then opens the signed
+  link in a new tab.
+- The Details modal continues to work; the pipeline stub returns a
+  synthetic timeline (uploaded → processed).
+
+### MongoDB collections
+- `documents` — placeholder + metadata (`id`, `org_id`, `client_id`,
+  `doc_type`, `filename`, `original_filename`, `mime_type`, `size`,
+  `status`, `storage_adapter`, `storage_key`, `sha256`, `created_by`,
+  `created_at`, `updated_at`, `processed_at`, `last_task_id`, `tags`).
+- `fs.files` / `fs.chunks` — GridFS bucket that owns the bytes.
+
+### Config (`backend/.env`)
+```
+STORAGE_ADAPTER=gridfs                                   # gridfs | s3 | r2 | gcs (only gridfs implemented)
+STORAGE_URL_TTL_SECONDS=300                              # signed URL expiry (5 min default)
+STORAGE_MAX_UPLOAD_BYTES=104857600                       # 100 MB per file
+STORAGE_SIGNING_SECRET=change-me-storage-signing-secret  # HMAC key — rotate for prod
+```
+
+### Swapping to S3 / R2 later
+1. `pip install boto3` and add S3/R2 creds to `.env`
+   (e.g. `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`).
+2. Create `S3Adapter(StorageAdapter)` in `storage_service.py` implementing
+   `put_bytes`, `stream`, `delete`. Optionally have `build_upload_url` /
+   `build_download_url` return actual S3 presigned URLs (no in-app proxy).
+3. Register in `get_adapter()` based on `STORAGE_ADAPTER=s3`.
+4. **Zero changes** to routers or frontend — the presign response shape
+   is identical.
+
+### Verified in preview
+- `POST /api/documents/upload-url` mints a signed URL with 5-min expiry
+  (verified via network intercept in browser).
+- Full round-trip: `PUT` → GridFS store → `GET /download-url` →
+  `GET /storage/download/{token}` → downloaded bytes exactly match
+  uploaded bytes (verified via `diff -q`; SHA-256 matches).
+- Tampered token → 400 "Invalid signature".
+- Wrong-op token (download token used for upload) → 400 "Wrong op".
+- MIME whitelist rejects non-allowed types → 400.
+- Documents grid lists real uploads with Details + Download actions;
+  Refresh list picks up newly uploaded docs.
+- All 4 uploaded documents in the demo browser session show
+  status=processed and download successfully.

@@ -2,5 +2,6 @@
   "/(auth)/login/page": "app/(auth)/login/page.js",
   "/(dashboard)/page": "app/(dashboard)/page.js",
   "/(dashboard)/query/page": "app/(dashboard)/query/page.js",
-  "/(dashboard)/anomalies/page": "app/(dashboard)/anomalies/page.js"
+  "/(dashboard)/anomalies/page": "app/(dashboard)/anomalies/page.js",
+  "/(dashboard)/documents/page": "app/(dashboard)/documents/page.js"
 }

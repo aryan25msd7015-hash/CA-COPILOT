@@ -37,6 +37,12 @@
       "static/chunks/main-app.js",
       "static/css/app/(dashboard)/anomalies/page.css",
       "static/chunks/app/(dashboard)/anomalies/page.js"
+    ],
+    "/(dashboard)/documents/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/(dashboard)/documents/page.css",
+      "static/chunks/app/(dashboard)/documents/page.js"
     ]
   }
 }

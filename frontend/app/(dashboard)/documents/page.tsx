@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { ColDef, ICellRendererParams } from 'ag-grid-community';
-import { Eye, FileText, RefreshCw, X } from 'lucide-react';
+import { Download, Eye, FileText, RefreshCw, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Client, DocumentPipeline, DocumentRecord, DocStatus } from '@/types';
 import ClientSelect from '@/components/shared/ClientSelect';
@@ -80,6 +80,18 @@ export default function DocumentsPage() {
     await pipeline.refetch();
   }, [documents, pipeline]);
 
+  const downloadDocument = useCallback(async (documentId: string) => {
+    try {
+      const res = await api.get<{ download_url: string }>(`/documents/${documentId}/download-url`);
+      if (res.data?.download_url) {
+        window.open(res.data.download_url, '_blank');
+      }
+    } catch (e) {
+      console.error('download failed', e);
+      alert('Download failed — file may not be uploaded yet.');
+    }
+  }, []);
+
   const columns = useMemo<ColDef<DocumentRecord>[]>(() => [
     { field: 'original_filename', headerName: 'File', minWidth: 220, valueFormatter: p => String(p.value || '-') },
     { field: 'doc_type', headerName: 'Type' },
@@ -100,6 +112,15 @@ export default function DocumentsPage() {
             <button onClick={() => setSelected(row)} className="inline-flex items-center gap-1 text-xs font-medium text-blue-700">
               <Eye className="h-3.5 w-3.5" /> Details
             </button>
+            {!(row as { seed?: boolean }).seed && (
+              <button
+                onClick={() => downloadDocument(row.id)}
+                className="inline-flex items-center gap-1 text-xs font-medium text-slate-700"
+                data-testid={`btn-download-${row.id}`}
+              >
+                <Download className="h-3.5 w-3.5" /> Download
+              </button>
+            )}
             {RETRYABLE_STATUSES.includes(row.status) && (
               <button onClick={() => retryDocument(row.id)} className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700">
                 <RefreshCw className="h-3.5 w-3.5" /> Retry
@@ -109,7 +130,7 @@ export default function DocumentsPage() {
         );
       },
     },
-  ], [clientNames, retryDocument]);
+  ], [clientNames, retryDocument, downloadDocument]);
 
   return <div className="space-y-5">
     <PageHeader title="Documents" subtitle="Upload, process, and monitor client documents." />
