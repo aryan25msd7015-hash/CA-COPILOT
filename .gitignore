@@ -88,3 +88,4 @@ frontend/node_modules/@next/swc-linux-x64-musl/next-swc.linux-x64-musl.node
 credentials.json
 *.key
 .credentials
+frontend/.next/cache/webpack/server-production/0.pack

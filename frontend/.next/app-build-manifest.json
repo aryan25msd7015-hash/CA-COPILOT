@@ -11,10 +11,11 @@
       "static/chunks/main-app.js",
       "static/chunks/app/(dashboard)/layout.js"
     ],
-    "/(dashboard)/billing/page": [
+    "/(dashboard)/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/(dashboard)/billing/page.js"
+      "static/css/app/(dashboard)/page.css",
+      "static/chunks/app/(dashboard)/page.js"
     ],
     "/(auth)/layout": [
       "static/chunks/webpack.js",
@@ -26,21 +27,21 @@
       "static/chunks/main-app.js",
       "static/chunks/app/(auth)/login/page.js"
     ],
-    "/(dashboard)/portal/page": [
+    "/(dashboard)/audit/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/(dashboard)/portal/page.js"
+      "static/chunks/app/(dashboard)/audit/page.js"
     ],
-    "/(dashboard)/page": [
+    "/(dashboard)/whatsapp/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/css/app/(dashboard)/page.css",
-      "static/chunks/app/(dashboard)/page.js"
+      "static/css/app/(dashboard)/whatsapp/page.css",
+      "static/chunks/app/(dashboard)/whatsapp/page.js"
     ],
-    "/auth/callback/page": [
+    "/_not-found/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/auth/callback/page.js"
+      "static/chunks/app/_not-found/page.js"
     ]
   }
 }
