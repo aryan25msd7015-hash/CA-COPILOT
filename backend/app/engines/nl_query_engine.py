@@ -96,7 +96,14 @@ def translate_to_sql_fallback(question: str) -> str:
     )
 
 
-def translate_to_sql(question: str, org_id: str, anthropic_client) -> str:
+def translate_to_sql(question: str, org_id: str, llm_client=None) -> tuple[str, str, str]:
+    """Translate NL → SQL via the multi-provider gateway.
+
+    Returns (sql, provider, model). `llm_client` is accepted for backward
+    compatibility with older call sites and is ignored.
+    """
+    from app.engines.llm_gateway import complete_text
+
     prompt = f"""Translate the question into one PostgreSQL SELECT query.
 Use only the schema below. Every tenant-owned table must be filtered using
 org_id = :org_id. Return SQL only, without markdown.
@@ -107,16 +114,20 @@ SCHEMA:
 QUESTION:
 {question}
 """
-    response = anthropic_client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=800,
+    completion = complete_text(
         system="You produce read-only, parameterized PostgreSQL queries.",
-        messages=[{"role": "user", "content": prompt}],
+        user=prompt,
+        max_tokens=800,
     )
-    sql = response.content[0].text.strip()
+    sql = completion.text.strip()
     sql = re.sub(r"^```(?:sql)?\s*|\s*```$", "", sql, flags=re.IGNORECASE)
     validate_sql(sql)
-    return sql
+    return sql, completion.provider, completion.model
+
+
+def translate_to_sql_with_provider(question: str, org_id: str) -> tuple[str, str, str]:
+    """Convenience wrapper used by task / router layers."""
+    return translate_to_sql(question, org_id)
 
 
 def validate_sql(sql: str) -> None:

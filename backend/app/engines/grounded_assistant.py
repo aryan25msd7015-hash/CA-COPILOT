@@ -7,7 +7,7 @@ from typing import Any
 
 from sqlalchemy import text
 
-from app.config import settings
+from app.engines.llm_gateway import active_provider, capability_status as llm_capability_status
 from app.engines.nl_query_engine import execute_query, translate_to_sql, translate_to_sql_fallback
 
 
@@ -84,12 +84,7 @@ def retrieve_sources(question: str, org_id: str, db, limit: int = 6) -> list[Gro
 
 
 def capability_status() -> dict[str, Any]:
-    return {
-        "llm_provider": "anthropic" if settings.ANTHROPIC_API_KEY else "deterministic_fallback",
-        "embedding_provider": "openai" if settings.OPENAI_API_KEY else "keyword_and_sql",
-        "rag_mode": "semantic_vector" if settings.OPENAI_API_KEY else "keyword_grounded",
-        "fallback_reason": None if settings.ANTHROPIC_API_KEY else "ANTHROPIC_API_KEY is not configured",
-    }
+    return llm_capability_status()
 
 
 def answer_from_rows(question: str, rows: list[dict[str, Any]]) -> str:
@@ -107,19 +102,19 @@ def answer_from_rows(question: str, rows: list[dict[str, Any]]) -> str:
 
 def grounded_query(question: str, org_id: str, db) -> dict[str, Any]:
     provider = "deterministic_fallback"
+    model = None
     fallback_reason = None
     try:
-        if settings.ANTHROPIC_API_KEY:
-            from anthropic import Anthropic
-
-            sql = translate_to_sql(question, org_id, Anthropic(api_key=settings.ANTHROPIC_API_KEY))
-            provider = "anthropic"
+        if active_provider():
+            sql, provider, model = translate_to_sql(question, org_id)
         else:
-            fallback_reason = "ANTHROPIC_API_KEY is not configured"
+            fallback_reason = "No LLM API key configured (set GROQ_API_KEY or GEMINI_API_KEY for free tier)"
             sql = translate_to_sql_fallback(question)
     except Exception as exc:
         fallback_reason = f"LLM SQL translation failed: {exc}"
         sql = translate_to_sql_fallback(question)
+        provider = "deterministic_fallback"
+        model = None
 
     result = execute_query(sql, org_id, db)
     sources = retrieve_sources(question, org_id, db)
@@ -127,6 +122,7 @@ def grounded_query(question: str, org_id: str, db) -> dict[str, Any]:
     confidence = "high" if result["row_count"] > 0 and provider != "deterministic_fallback" else "medium" if result["row_count"] > 0 else "low"
     result.update({
         "provider": provider,
+        "model": model,
         "question": question,
         "answer": answer_from_rows(question, result["rows"]),
         "confidence": confidence,

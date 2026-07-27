@@ -178,24 +178,25 @@ def generate_audit_papers(self, document_id: str, period: str = "Current period"
 
 @celery_app.task(bind=True, queue="llm", max_retries=2, retry_backoff=True)
 def run_nl_query(self, question: str, org_id: str):
-    from app.config import settings
+    from app.engines.llm_gateway import active_provider
     from app.engines.nl_query_engine import execute_query, translate_to_sql, translate_to_sql_fallback
 
     db = SessionLocal()
     try:
         provider = "deterministic_fallback"
+        model = None
         try:
-            if settings.ANTHROPIC_API_KEY:
-                from anthropic import Anthropic
-
-                sql = translate_to_sql(question, org_id, Anthropic(api_key=settings.ANTHROPIC_API_KEY))
-                provider = "anthropic"
+            if active_provider():
+                sql, provider, model = translate_to_sql(question, org_id)
             else:
                 sql = translate_to_sql_fallback(question)
         except Exception:
             sql = translate_to_sql_fallback(question)
+            provider = "deterministic_fallback"
+            model = None
         result = execute_query(sql, org_id, db)
         result["provider"] = provider
+        result["model"] = model
         result["question"] = question
         return result
     except Exception as exc:

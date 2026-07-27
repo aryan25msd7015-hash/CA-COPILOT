@@ -8,9 +8,23 @@ import DataGrid from '@/components/shared/DataGrid';
 import PageHeader from '@/components/shared/PageHeader';
 import TaskStatusPoller from '@/components/shared/TaskStatusPoller';
 
-interface QueryResult { sql: string; rows: Record<string, unknown>[]; row_count: number; provider?: string; question?: string; }
+interface QueryResult {
+  sql: string;
+  rows: Record<string, unknown>[];
+  row_count: number;
+  provider?: string;
+  model?: string;
+  question?: string;
+  answer?: string;
+}
 interface SavedQuery { id: string; name: string; nl_query: string; run_count: number; last_run_at?: string; updated_at?: string; created_at?: string; }
 interface StarterPrompt { category: string; intent: string; prompt: string; recommended: boolean; }
+interface LlmCapability {
+  llm_provider?: string;
+  llm_model?: string;
+  llm_tier?: string;
+  fallback_reason?: string | null;
+}
 
 export default function QueryPage() {
   const [question, setQuestion] = useState('');
@@ -21,6 +35,7 @@ export default function QueryPage() {
   const [editName, setEditName] = useState('');
   const [editQuery, setEditQuery] = useState('');
   const starters = useQuery<StarterPrompt[]>({ queryKey: ['query-starters'], queryFn: () => api.get('/query/starters').then(r => r.data) });
+  const capability = useQuery<LlmCapability>({ queryKey: ['query-capability'], queryFn: () => api.get('/query/capability').then(r => r.data) });
   const saved = useQuery<SavedQuery[]>({ queryKey: ['saved-queries', savedSearch], queryFn: () => api.get('/query/saved', { params: savedSearch.trim() ? { q: savedSearch.trim() } : {} }).then(r => r.data) });
   const instant = useMutation({
     mutationFn: () => api.post('/query/ask-now', { question }),
@@ -71,8 +86,22 @@ export default function QueryPage() {
     await saved.refetch();
   }
 
+  const activeProvider = capability.data?.llm_provider || 'deterministic_fallback';
+  const activeModel = capability.data?.llm_model;
+  const activeTier = capability.data?.llm_tier;
+
   return <div className="space-y-5">
     <PageHeader title="Natural Language Query" subtitle="Ask read-only questions across your firm's tenant-scoped data." />
+    <div className="rounded-xl border bg-white p-3 text-xs text-gray-600">
+      <span className="font-medium text-gray-800">LLM layer:</span>{' '}
+      {activeProvider}
+      {activeModel ? ` · ${activeModel}` : ''}
+      {activeTier ? ` · ${activeTier} tier` : ''}
+      {capability.data?.fallback_reason ? ` — ${capability.data.fallback_reason}` : ''}
+      <span className="mt-1 block text-[11px] text-gray-400">
+        Free tier: set GROQ_API_KEY (llama-3.1-8b-instant) or GEMINI_API_KEY (gemini-2.0-flash). Paid keys still take priority when present.
+      </span>
+    </div>
     <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
       <div className="space-y-3 rounded-xl border bg-white p-4">
         <textarea value={question} onChange={e => setQuestion(e.target.value)} rows={4} className="w-full rounded-lg border p-3 text-sm" placeholder="Which clients have deadlines due next week?" />
@@ -110,8 +139,10 @@ export default function QueryPage() {
       <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
         <span>{result.row_count} rows</span>
         <span>Provider: {result.provider || 'unknown'}</span>
+        {result.model && <span>Model: {result.model}</span>}
         {result.question && <span>Question: {result.question}</span>}
       </div>
+      {result.answer && <p className="whitespace-pre-wrap rounded-lg bg-blue-50 p-3 text-sm text-blue-950">{result.answer}</p>}
       <details><summary className="cursor-pointer text-sm font-medium text-blue-700">Generated SQL</summary><pre className="mt-2 overflow-auto rounded bg-gray-900 p-3 text-xs text-gray-100">{result.sql}</pre></details>
       <DataGrid rows={result.rows} columns={columns} />
     </div>}
