@@ -176,12 +176,15 @@ def scan_invoice(transaction_id: str, db) -> dict:
 
     # Seed HAE layer hint so fusion can consume fraud scanner output immediately.
     if failures:
-        prior = float(txn.anomaly_score or 0)
+        prior = float(getattr(txn, "anomaly_score", None) or 0)
         fraud_prob = min(1.0, 0.55 + 0.15 * len(failures))
-        txn.anomaly_score = max(prior, fraud_prob)
-        if getattr(txn, "audit_risk_prob", None) is None or float(txn.audit_risk_prob or 0) < fraud_prob:
-            txn.audit_risk_prob = fraud_prob
-            txn.audit_risk_score = round(fraud_prob * 100.0, 2)
+        if hasattr(txn, "anomaly_score"):
+            txn.anomaly_score = max(prior, fraud_prob)
+        if getattr(txn, "audit_risk_prob", None) is None or float(getattr(txn, "audit_risk_prob", 0) or 0) < fraud_prob:
+            if hasattr(txn, "audit_risk_prob"):
+                txn.audit_risk_prob = fraud_prob
+            if hasattr(txn, "audit_risk_score"):
+                txn.audit_risk_score = round(fraud_prob * 100.0, 2)
         drivers = [{"feature": "invoice_fraud_rule", "contribution": round(fraud_prob, 4), "direction": "increases_risk"}]
         for issue in failures[:4]:
             drivers.append({
@@ -189,10 +192,12 @@ def scan_invoice(transaction_id: str, db) -> dict:
                 "contribution": 0.2,
                 "direction": "increases_risk",
             })
-        txn.audit_risk_drivers = drivers
-        layers = dict(txn.hae_layer_scores or {})
-        layers["fraud_rules"] = fraud_prob
-        txn.hae_layer_scores = layers
+        if hasattr(txn, "audit_risk_drivers"):
+            txn.audit_risk_drivers = drivers
+        if hasattr(txn, "hae_layer_scores"):
+            layers = dict(getattr(txn, "hae_layer_scores", None) or {})
+            layers["fraud_rules"] = fraud_prob
+            txn.hae_layer_scores = layers
 
     db.commit()
 
