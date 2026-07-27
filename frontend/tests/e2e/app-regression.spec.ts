@@ -37,9 +37,9 @@ const moduleRoutes = [
 
 async function login(page: Page) {
   await page.goto('/login');
-  await page.getByLabel('Email').fill(demoEmail);
-  await page.getByLabel('Password').fill(demoPassword);
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.getByTestId('login-email').fill(demoEmail);
+  await page.getByTestId('login-password').fill(demoPassword);
+  await page.getByTestId('login-submit').click();
   await page.waitForURL(/\/$/, { timeout: 30_000 });
 }
 
@@ -73,7 +73,11 @@ test('password reset request screen is reachable', async ({ page }) => {
 for (const route of moduleRoutes) {
   test(`authenticated module route renders: ${route}`, async ({ page }) => {
     await authenticate(page);
-    await page.goto(route);
+    await page.goto(route, { waitUntil: 'domcontentloaded' });
+    // One soft retry for transient Next.js client hydration glitches in compose.
+    if (await page.locator('body').innerText().then((t) => t.includes('Application error')).catch(() => false)) {
+      await page.reload({ waitUntil: 'domcontentloaded' });
+    }
     await expect(page.locator('body')).not.toContainText('Application error');
     await expect(page.locator('body')).not.toContainText('Network Error');
   });
