@@ -18,6 +18,7 @@ from .whatsapp_reminder import WhatsAppReminder
 from .reconciliation import ReconciliationConfig, ReconciliationMatchAction, ReconciliationResult
 from .health_history import ClientHealthHistory, ClientHealthScoreEvent
 from .anomaly_flag import AnomalyFlag
+from .audit_ml import AuditBanditEvent, AuditEngineRun, AuditModelArtifact
 from .saved_query import SavedQuery
 from .autopilot import (
     AutopilotException, AutopilotFollowup, AutopilotReviewAction, AutopilotSyncRun,
@@ -56,6 +57,9 @@ __all__ = [
     "ClientHealthHistory",
     "ClientHealthScoreEvent",
     "AnomalyFlag",
+    "AuditModelArtifact",
+    "AuditEngineRun",
+    "AuditBanditEvent",
     "SavedQuery",
     "AutopilotSyncRun",
     "AutopilotException",

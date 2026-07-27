@@ -16,6 +16,13 @@ interface AuditResult {
   export_mode?: string;
   generated_at?: string;
   period?: string;
+  sample_plan?: {
+    selected_count?: number;
+    coverage_amount?: number;
+    materiality?: number;
+    sample?: Array<{ id?: string; priority_score?: number; risk_prob?: number; impact_amount?: number }>;
+  };
+  disclaimer?: string;
 }
 export default function AuditPage() {
   const [clientId, setClientId] = useState('');
@@ -36,7 +43,7 @@ export default function AuditPage() {
     link.click();
     URL.revokeObjectURL(url);
   }
-  return <div className="space-y-5"><PageHeader title="AI Audit Working Papers" subtitle="Analyze a trial balance and generate ICAI-style observations." />
+  return <div className="space-y-5"><PageHeader title="AI Audit Working Papers" subtitle="HAE-4 fused risk + adaptive sampling feeding ICAI-style observations. Drafts require CA verification." />
     <div className="grid gap-4 rounded-xl border bg-white p-4 md:grid-cols-2"><div className="space-y-3"><ClientSelect clients={clients.data || []} value={clientId} onChange={setClientId} /><FileUploadZone clientId={clientId} docType="trial_balance" onUploaded={setDocumentId} /></div><div className="space-y-3"><button disabled={!documentId} onClick={generate} className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50">Generate working paper</button><TaskStatusPoller taskId={taskId} onSuccess={data => setResult(data as AuditResult)} /></div></div>
     {result && <div className="space-y-5 rounded-xl border bg-white p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -48,10 +55,15 @@ export default function AuditPage() {
             <span>Export: {result.export_mode || 'unknown'}</span>
             {result.generated_at && <span>Generated: {new Date(result.generated_at).toLocaleString('en-IN')}</span>}
           </div>
+          {result.disclaimer && <p className="text-xs text-amber-700">{result.disclaimer}</p>}
         </div>
         <button onClick={download} className="rounded border px-3 py-2 text-sm text-blue-700">Download DOCX</button>
       </div>
       <div className="grid gap-3 md:grid-cols-4">{Object.entries(result.ratios || {}).map(([key, value]) => <div key={key} className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-500">{key.replaceAll('_', ' ')}</p><p className="mt-1 font-semibold">{value}</p></div>)}</div>
+      {result.sample_plan && <div className="rounded-lg border p-3 text-sm">
+        <p className="font-medium">HAE adaptive sample</p>
+        <p className="text-xs text-gray-600 mt-1">Selected {result.sample_plan.selected_count || 0} items · coverage ₹{(result.sample_plan.coverage_amount || 0).toLocaleString('en-IN')} vs materiality ₹{(result.sample_plan.materiality || 0).toLocaleString('en-IN')}</p>
+      </div>}
       <pre className="whitespace-pre-wrap rounded-lg bg-gray-50 p-4 text-sm leading-6 text-gray-700">{result.observations}</pre>
     </div>}
   </div>;

@@ -32,6 +32,7 @@ celery_app.conf.update(
         "app.tasks.ocr_tasks.*":              {"queue": "ocr"},
         "app.tasks.reconciliation_tasks.*":   {"queue": "heavy"},
         "app.tasks.anomaly_tasks.*":          {"queue": "heavy"},
+        "app.tasks.hybrid_audit_tasks.*":     {"queue": "heavy"},
         "app.tasks.llm_tasks.*":              {"queue": "llm"},
         "app.tasks.whatsapp_tasks.*":         {"queue": "whatsapp"},
         "app.tasks.health_tasks.*":           {"queue": "heavy"},
@@ -46,6 +47,7 @@ celery_app.conf.update(
         "app.tasks.ocr_tasks",
         "app.tasks.reconciliation_tasks",
         "app.tasks.anomaly_tasks",
+        "app.tasks.hybrid_audit_tasks",
         "app.tasks.llm_tasks",
         "app.tasks.whatsapp_tasks",
         "app.tasks.health_tasks",
@@ -70,6 +72,10 @@ celery_app.conf.update(
         "refresh_all_autopilot_inboxes": {
             "task": "app.tasks.autopilot_tasks.refresh_all_autopilot_inboxes",
             "schedule": crontab(hour=7, minute=30),
+        },
+        "train_hybrid_audit_models_nightly": {
+            "task": "app.tasks.hybrid_audit_tasks.train_all_org_hybrid_models",
+            "schedule": crontab(hour=1, minute=15),
         },
     },
 )

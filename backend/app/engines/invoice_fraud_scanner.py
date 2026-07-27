@@ -173,6 +173,27 @@ def scan_invoice(transaction_id: str, db) -> dict:
     if not failures:
         txn.fraud_review_status = "cleared"
         txn.fraud_review_note = None
+
+    # Seed HAE layer hint so fusion can consume fraud scanner output immediately.
+    if failures:
+        prior = float(txn.anomaly_score or 0)
+        fraud_prob = min(1.0, 0.55 + 0.15 * len(failures))
+        txn.anomaly_score = max(prior, fraud_prob)
+        if getattr(txn, "audit_risk_prob", None) is None or float(txn.audit_risk_prob or 0) < fraud_prob:
+            txn.audit_risk_prob = fraud_prob
+            txn.audit_risk_score = round(fraud_prob * 100.0, 2)
+        drivers = [{"feature": "invoice_fraud_rule", "contribution": round(fraud_prob, 4), "direction": "increases_risk"}]
+        for issue in failures[:4]:
+            drivers.append({
+                "feature": issue[:48],
+                "contribution": 0.2,
+                "direction": "increases_risk",
+            })
+        txn.audit_risk_drivers = drivers
+        layers = dict(txn.hae_layer_scores or {})
+        layers["fraud_rules"] = fraud_prob
+        txn.hae_layer_scores = layers
+
     db.commit()
 
     return {
@@ -180,4 +201,6 @@ def scan_invoice(transaction_id: str, db) -> dict:
         "fraud_flag": txn.fraud_flag,
         "failures": failures,
         "clean": len(failures) == 0,
+        "audit_risk_score": float(txn.audit_risk_score) if getattr(txn, "audit_risk_score", None) is not None else None,
+        "drivers": getattr(txn, "audit_risk_drivers", None),
     }
