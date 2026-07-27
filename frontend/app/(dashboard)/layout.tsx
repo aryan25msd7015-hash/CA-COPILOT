@@ -3,7 +3,6 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import Sidebar from '@/components/layout/Sidebar';
 import TopBar from '@/components/layout/TopBar';
 import VoiceAssistant from '@/components/assistant/VoiceAssistant';
 
@@ -19,13 +18,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (isLoading) {
     return (
-      <div className="dark-shift relative flex min-h-screen items-center justify-center overflow-hidden">
-        <div className="hud-panel motion-pop hud-corners rounded-2xl px-6 py-5">
+      <div className="relative flex min-h-screen items-center justify-center bg-[var(--bg-1)]">
+        <div className="rounded-2xl border border-[var(--line-2)] bg-[var(--bg-0)] px-6 py-5 shadow-[var(--shadow-panel)]">
           <div className="flex items-center gap-3">
             <span className="ring-loader" data-testid="workspace-loader" />
             <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-cyan-signal">Initialising</p>
-              <p className="mt-0.5 text-sm font-medium text-fg">Booting workspace</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--fg-3)]">Loading</p>
+              <p className="mt-0.5 text-sm font-medium text-[var(--fg-0)]">Opening workspace</p>
             </div>
           </div>
         </div>
@@ -36,26 +35,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) return null;
 
   return (
-    <div
-      className="dark-shift relative flex min-h-screen overflow-hidden"
-      data-testid="dashboard-shell"
-    >
-      {/* Ambient orbs */}
-      <div className="pointer-events-none absolute -left-40 top-[-8rem] h-[520px] w-[520px] rounded-full bg-cyan-500/20 blur-[140px]" />
-      <div className="pointer-events-none absolute right-[-8rem] top-1/3 h-[440px] w-[440px] rounded-full bg-violet-500/20 blur-[140px]" />
-      <div className="pointer-events-none absolute bottom-[-10rem] left-1/2 h-[320px] w-[320px] -translate-x-1/2 rounded-full bg-orange-500/10 blur-[120px]" />
+    <div className="relative flex min-h-screen flex-col bg-[var(--bg-1)]" data-testid="dashboard-shell">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(ellipse_at_top,rgba(11,95,92,0.08),transparent_58%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,transparent_0%,rgba(232,237,242,0.55)_100%)]" />
 
-      <Sidebar />
-      <div className="relative flex min-w-0 flex-1 flex-col">
-        <TopBar />
-        <main
-          className="app-page relative flex-1 overflow-auto px-4 py-6 sm:px-6 lg:px-8"
-          data-testid="dashboard-main"
-        >
-          {children}
-        </main>
-        <VoiceAssistant />
-      </div>
+      <TopBar />
+      <main
+        className="app-page relative mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-8"
+        data-testid="dashboard-main"
+      >
+        {children}
+      </main>
+      <VoiceAssistant />
     </div>
   );
 }

@@ -71,17 +71,16 @@ export default function CommandPalette({ user, open, onOpenChange }: CommandPale
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/60 px-4 py-[12vh] backdrop-blur-md"
+      className="fixed inset-0 z-50 bg-[rgba(18,22,29,0.35)] px-4 py-[12vh] backdrop-blur-sm"
       onMouseDown={() => onOpenChange(false)}
       data-testid="command-palette-overlay"
     >
       <div
-        className="motion-pop hud-corners mx-auto max-w-2xl overflow-hidden rounded-2xl border border-cyan-400/25 bg-[rgba(9,14,32,0.9)] shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9),0_0_40px_-10px_rgba(34,211,238,0.35)] backdrop-blur-2xl"
+        className="motion-pop mx-auto max-w-2xl overflow-hidden rounded-2xl border border-[var(--line-2)] bg-[var(--bg-0)] shadow-[var(--shadow-panel)]"
         onMouseDown={event => event.stopPropagation()}
       >
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/70 to-transparent" />
-        <div className="flex items-center gap-3 border-b border-line px-4 py-3">
-          <Search className="h-4 w-4 text-cyan-300" />
+        <div className="flex items-center gap-3 border-b border-[var(--line-2)] px-4 py-3">
+          <Search className="h-4 w-4 text-[var(--fg-3)]" />
           <input
             ref={inputRef}
             value={query}
@@ -102,13 +101,13 @@ export default function CommandPalette({ user, open, onOpenChange }: CommandPale
               }
             }}
             placeholder="Search modules, reports, workflows..."
-            className="h-8 flex-1 border-0 bg-transparent text-sm text-fg outline-none placeholder:text-fg-3"
+            className="h-8 flex-1 border-0 bg-transparent text-sm text-[var(--fg-0)] outline-none placeholder:text-[var(--fg-3)]"
           />
           <button
             type="button"
             title="Close command palette"
             onClick={() => onOpenChange(false)}
-            className="grid h-7 w-7 place-items-center rounded-md text-fg-3 outline-none transition hover:bg-white/[0.06] hover:text-fg focus-visible:ring-2 focus-visible:ring-cyan-500/40"
+            className="grid h-7 w-7 place-items-center rounded-md text-[var(--fg-3)] transition hover:bg-[var(--bg-3)] hover:text-[var(--fg-1)]"
           >
             <X className="h-4 w-4" />
           </button>
@@ -124,36 +123,36 @@ export default function CommandPalette({ user, open, onOpenChange }: CommandPale
                 type="button"
                 onMouseEnter={() => setActiveIndex(index)}
                 onClick={() => go(item.href)}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left outline-none transition ${
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition ${
                   active
-                    ? 'bg-gradient-to-r from-cyan-500/18 to-violet-500/12 text-fg shadow-[inset_0_0_0_1px_rgba(34,211,238,0.4)]'
-                    : 'text-fg-2 hover:bg-white/[0.04] hover:text-fg'
+                    ? 'bg-[var(--accent-soft)] text-[var(--fg-0)]'
+                    : 'text-[var(--fg-2)] hover:bg-[var(--bg-3)] hover:text-[var(--fg-0)]'
                 }`}
               >
-                <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-md ${active ? 'bg-cyan-400/15' : 'bg-white/[0.04]'}`}>
-                  <Command className={`h-4 w-4 ${active ? 'text-cyan-300' : 'text-fg-3'}`} />
+                <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-md ${active ? 'bg-[var(--bg-0)]' : 'bg-[var(--bg-3)]'}`}>
+                  <Command className={`h-4 w-4 ${active ? 'text-[var(--accent)]' : 'text-[var(--fg-3)]'}`} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">{item.label}</span>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-fg-3">
+                  <span className="block truncate text-sm font-medium text-[var(--fg-0)]">{item.label}</span>
+                  <span className="text-[11px] uppercase tracking-[0.14em] text-[var(--fg-3)]">
                     {item.group}{current ? ' · current' : ''}
                   </span>
                 </span>
-                <ArrowRight className={`h-4 w-4 ${active ? 'text-cyan-300' : 'text-fg-3'}`} />
+                <ArrowRight className={`h-4 w-4 ${active ? 'text-[var(--accent)]' : 'text-[var(--fg-3)]'}`} />
               </button>
             );
           })}
           {!filtered.length && (
             <div className="px-4 py-10 text-center">
-              <p className="text-sm font-medium text-fg">No matching module</p>
-              <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.2em] text-fg-3">
+              <p className="text-sm font-medium text-[var(--fg-0)]">No matching module</p>
+              <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-[var(--fg-3)]">
                 Try GST · billing · portal · reports · tasks
               </p>
             </div>
           )}
         </div>
 
-        <div className="flex items-center justify-between border-t border-line bg-[rgba(6,10,22,0.7)] px-4 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-fg-3">
+        <div className="flex items-center justify-between border-t border-[var(--line-2)] bg-[var(--bg-2)] px-4 py-2 text-[10px] uppercase tracking-[0.14em] text-[var(--fg-3)]">
           <span>{filtered.length} matches</span>
           <span className="flex items-center gap-2">
             <span className="kbd">↑</span><span className="kbd">↓</span> navigate
