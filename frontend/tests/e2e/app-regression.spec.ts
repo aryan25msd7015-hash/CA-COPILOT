@@ -56,11 +56,16 @@ async function authenticate(page: Page) {
 }
 
 test('demo user can sign in and view readiness diagnostics', async ({ page }) => {
-  await login(page);
+  await authenticate(page);
   await page.goto('/diagnostics');
   await expect(page.getByRole('heading', { name: 'Diagnostics' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Integrations' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Security Controls' })).toBeVisible();
+});
+
+test('demo login form accepts operator credentials', async ({ page }) => {
+  await login(page);
+  await expect(page).toHaveURL(/\/$/);
 });
 
 test('password reset request screen is reachable', async ({ page }) => {

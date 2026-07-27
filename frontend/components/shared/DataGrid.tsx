@@ -2,12 +2,9 @@
 
 import { useMemo } from 'react';
 import { AgGridReact } from 'ag-grid-react';
-import { ClientSideRowModelModule, ModuleRegistry } from 'ag-grid-community';
 import type { ColDef } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
-
-ModuleRegistry.registerModules([ClientSideRowModelModule]);
 
 export default function DataGrid<T extends object>({
   rows,
@@ -28,10 +25,12 @@ export default function DataGrid<T extends object>({
     minWidth: 120,
   }), []);
 
+  const safeRows = Array.isArray(rows) ? rows : [];
+
   return (
     <div className="ag-theme-alpine apple-grid w-full overflow-hidden rounded-2xl border border-slate-200/70 bg-white/80 shadow-sm" style={{ minHeight: 180 }}>
       <AgGridReact<T>
-        rowData={rows}
+        rowData={safeRows}
         columnDefs={columns}
         defaultColDef={defaultColDef}
         domLayout="autoHeight"
