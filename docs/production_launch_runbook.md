@@ -52,11 +52,19 @@ Use managed services before taking real customers:
 - Redis with auth enabled and private networking.
 - S3 bucket with block public access, lifecycle retention, and encryption.
 
-Run migrations during deploy:
+Run migrations during deploy. Production containers run this automatically via
+`backend/scripts/entrypoint.sh` (and `docker-compose.prod.yml` includes a
+one-shot `migrate` service):
 
 ```bash
 cd backend
 alembic upgrade head
+```
+
+Or with Compose:
+
+```bash
+docker compose -f docker-compose.prod.yml run --rm migrate
 ```
 
 ## 5. Email Setup

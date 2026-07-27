@@ -9,7 +9,7 @@ Applies two new tables required by the Razorpay integration:
     razorpay_events            -> webhook receipts (idempotent, replay-safe)
     razorpay_subscriptions     -> firm-level CA Copilot SaaS subscriptions
 
-The one-time invoice payment flow reuses the existing invoices / invoice_payments
+The one-time invoice payment flow reuses practice_invoices / payment_receipts
 tables in app/models/practice_ops.py; no schema change there.
 
 To apply:
@@ -63,7 +63,7 @@ def upgrade() -> None:
         sa.Column("razorpay_payment_link_id", sa.String(64)),
         sa.Column("razorpay_subscription_id", sa.String(64)),
         sa.Column("razorpay_refund_id", sa.String(64)),
-        sa.Column("invoice_id", postgresql.UUID(as_uuid=False), sa.ForeignKey("invoices.id"), nullable=True),
+        sa.Column("invoice_id", postgresql.UUID(as_uuid=False), sa.ForeignKey("practice_invoices.id"), nullable=True),
         sa.Column("subscription_id", postgresql.UUID(as_uuid=False), sa.ForeignKey("razorpay_subscriptions.id"), nullable=True),
         sa.Column("received_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.Column("handled_at", sa.DateTime(timezone=True)),

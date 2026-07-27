@@ -11,14 +11,14 @@
  *
  * REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
  */
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AlertCircle, CheckCircle2, Radio, ShieldCheck } from 'lucide-react';
 import { exchangeGoogleSession } from '@/lib/googleAuth';
 
 type Phase = 'processing' | 'success' | 'awaiting_approval' | 'error';
 
-export default function GoogleAuthCallback() {
+function GoogleAuthCallbackInner() {
   const search = useSearchParams();
   const intent = search.get('intent') || 'firm';
   const [phase, setPhase] = useState<Phase>('processing');
@@ -161,5 +161,19 @@ export default function GoogleAuthCallback() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function GoogleAuthCallback() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[#060913] text-sm text-cyan-200">
+          Verifying secure handshake…
+        </div>
+      }
+    >
+      <GoogleAuthCallbackInner />
+    </Suspense>
   );
 }
