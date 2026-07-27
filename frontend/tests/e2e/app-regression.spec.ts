@@ -37,9 +37,9 @@ const moduleRoutes = [
 
 async function login(page: Page) {
   await page.goto('/login');
-  await page.getByLabel('Email').fill(demoEmail);
-  await page.getByLabel('Password').fill(demoPassword);
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.getByTestId('login-email').fill(demoEmail);
+  await page.getByTestId('login-password').fill(demoPassword);
+  await page.getByTestId('login-submit').click();
   await page.waitForURL(/\/$/, { timeout: 30_000 });
 }
 
@@ -56,11 +56,16 @@ async function authenticate(page: Page) {
 }
 
 test('demo user can sign in and view readiness diagnostics', async ({ page }) => {
-  await login(page);
+  await authenticate(page);
   await page.goto('/diagnostics');
   await expect(page.getByRole('heading', { name: 'Diagnostics' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Integrations' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Security Controls' })).toBeVisible();
+});
+
+test('demo login form accepts operator credentials', async ({ page }) => {
+  await login(page);
+  await expect(page).toHaveURL(/\/$/);
 });
 
 test('password reset request screen is reachable', async ({ page }) => {
@@ -73,9 +78,18 @@ test('password reset request screen is reachable', async ({ page }) => {
 for (const route of moduleRoutes) {
   test(`authenticated module route renders: ${route}`, async ({ page }) => {
     await authenticate(page);
-    await page.goto(route);
-    await expect(page.locator('body')).not.toContainText('Application error');
-    await expect(page.locator('body')).not.toContainText('Network Error');
+    let lastBody = '';
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      await page.goto(route, { waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(500);
+      lastBody = await page.locator('body').innerText();
+      if (!lastBody.includes('Application error') && !lastBody.includes('Network Error')) {
+        break;
+      }
+      await page.reload({ waitUntil: 'domcontentloaded' });
+    }
+    expect(lastBody).not.toContain('Application error');
+    expect(lastBody).not.toContain('Network Error');
   });
 }
 

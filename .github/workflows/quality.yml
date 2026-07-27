@@ -100,6 +100,12 @@ jobs:
         run: docker compose up -d postgres redis backend frontend
       - name: Prepare demo database
         run: |
+          for i in $(seq 1 60); do
+            if docker compose exec -T backend true 2>/dev/null; then
+              break
+            fi
+            sleep 2
+          done
           docker compose exec -T backend alembic upgrade head
           docker compose exec -T backend python scripts/seed_demo_data.py
       - name: Run browser regression

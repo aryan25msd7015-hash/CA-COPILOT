@@ -43,6 +43,10 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     return user
 
 
+# Alias used by newer routers (email/razorpay) that expect require_user.
+require_user = get_current_user
+
+
 def require_role(allowed_roles: List[str]):
     def checker(user: User = Depends(get_current_user)):
         if user.role not in allowed_roles:

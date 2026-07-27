@@ -34,7 +34,7 @@ from app.config import settings
 from app.database import get_db
 from app.models.razorpay_models import RazorpayEvent, RazorpaySubscription
 from app.services import razorpay_service as rz
-from app.utils.deps import require_user  # existing auth dep
+from app.utils.deps import get_current_user  # existing auth dep
 
 router = APIRouter()
 log = logging.getLogger("ca_platform.razorpay")
@@ -127,7 +127,7 @@ class VerifyIn(BaseModel):
 
 
 @router.post("/orders")
-def create_order(body: OrderIn, user=Depends(require_user)):
+def create_order(body: OrderIn, user=Depends(get_current_user)):
     if not rz.is_configured():
         raise HTTPException(503, "Razorpay is not configured")
     notes = {"org_id": str(user.org_id), "user_id": str(user.id)}
@@ -153,7 +153,7 @@ def create_order(body: OrderIn, user=Depends(require_user)):
 
 
 @router.post("/verify-payment")
-def verify_payment(body: VerifyIn, db: Session = Depends(get_db), user=Depends(require_user)):
+def verify_payment(body: VerifyIn, db: Session = Depends(get_db), user=Depends(get_current_user)):
     try:
         rz.verify_checkout_signature(
             razorpay_order_id=body.razorpay_order_id,
@@ -167,17 +167,18 @@ def verify_payment(body: VerifyIn, db: Session = Depends(get_db), user=Depends(r
     # practice_ops mutation (kept loose to avoid a hard import cycle).
     if body.invoice_id:
         try:
-            from app.models.practice_ops import Invoice, InvoicePayment  # local import
-            inv = db.query(Invoice).filter(Invoice.id == body.invoice_id,
-                                           Invoice.org_id == user.org_id).first()
+            from app.models.practice_ops import PracticeInvoice, PaymentReceipt  # local import
+            inv = db.query(PracticeInvoice).filter(PracticeInvoice.id == body.invoice_id,
+                                           PracticeInvoice.org_id == user.org_id).first()
             if inv:
                 fetched = rz.fetch_payment(body.razorpay_payment_id)
                 amount = float(fetched.get("amount") or 0) / 100
-                db.add(InvoicePayment(
+                db.add(PaymentReceipt(
                     invoice_id=inv.id,
                     org_id=inv.org_id,
+                    client_id=inv.client_id,
                     amount=amount,
-                    paid_at=datetime.now(timezone.utc),
+                    paid_at=datetime.now(timezone.utc).date(),
                     mode="razorpay",
                     reference=body.razorpay_payment_id,
                 ))
@@ -203,7 +204,7 @@ class SubscriptionIn(BaseModel):
 
 
 @router.post("/subscriptions")
-def start_subscription(body: SubscriptionIn, db: Session = Depends(get_db), user=Depends(require_user)):
+def start_subscription(body: SubscriptionIn, db: Session = Depends(get_db), user=Depends(get_current_user)):
     if not rz.is_configured():
         raise HTTPException(503, "Razorpay is not configured")
     plan_def = next((p for p in PLAN_CATALOG if p["code"] == body.plan_code), None)
@@ -250,7 +251,7 @@ def start_subscription(body: SubscriptionIn, db: Session = Depends(get_db), user
 
 
 @router.delete("/subscriptions/{sub_id}")
-def cancel_sub(sub_id: str, db: Session = Depends(get_db), user=Depends(require_user)):
+def cancel_sub(sub_id: str, db: Session = Depends(get_db), user=Depends(get_current_user)):
     row = db.query(RazorpaySubscription).filter(
         RazorpaySubscription.id == sub_id,
         RazorpaySubscription.org_id == user.org_id,
@@ -268,7 +269,7 @@ def cancel_sub(sub_id: str, db: Session = Depends(get_db), user=Depends(require_
 
 
 @router.get("/subscriptions")
-def list_subs(db: Session = Depends(get_db), user=Depends(require_user)):
+def list_subs(db: Session = Depends(get_db), user=Depends(get_current_user)):
     rows = (
         db.query(RazorpaySubscription)
         .filter(RazorpaySubscription.org_id == user.org_id)
@@ -302,7 +303,7 @@ class PaymentLinkIn(BaseModel):
 
 
 @router.post("/payment-links")
-def payment_link(body: PaymentLinkIn, user=Depends(require_user)):
+def payment_link(body: PaymentLinkIn, user=Depends(get_current_user)):
     if not rz.is_configured():
         raise HTTPException(503, "Razorpay is not configured")
     try:
@@ -423,20 +424,21 @@ def _reduce_event(db: Session, s: dict[str, Any]) -> None:
     # Invoice payment via order.paid / payment.captured
     if event in ("order.paid", "payment.captured", "payment_link.paid") and s.get("invoice_id"):
         try:
-            from app.models.practice_ops import Invoice, InvoicePayment
-            inv = db.query(Invoice).filter(Invoice.id == s["invoice_id"]).first()
+            from app.models.practice_ops import PracticeInvoice, PaymentReceipt
+            inv = db.query(PracticeInvoice).filter(PracticeInvoice.id == s["invoice_id"]).first()
             if inv and s.get("amount_inr"):
                 already = (
-                    db.query(InvoicePayment)
-                    .filter(InvoicePayment.reference == s.get("razorpay_payment_id"))
+                    db.query(PaymentReceipt)
+                    .filter(PaymentReceipt.reference == s.get("razorpay_payment_id"))
                     .first()
                 )
                 if not already:
-                    db.add(InvoicePayment(
+                    db.add(PaymentReceipt(
                         invoice_id=inv.id,
                         org_id=inv.org_id,
+                        client_id=inv.client_id,
                         amount=s["amount_inr"],
-                        paid_at=datetime.now(timezone.utc),
+                        paid_at=datetime.now(timezone.utc).date(),
                         mode="razorpay",
                         reference=s.get("razorpay_payment_id") or s.get("razorpay_payment_link_id"),
                     ))

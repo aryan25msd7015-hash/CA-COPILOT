@@ -288,7 +288,16 @@ def build_exception_candidates(
         if not in_scope(flag.client_id):
             continue
         client = client_map[str(flag.client_id)]
-        score = _num(flag.risk_score) * 10
+        risk = _num(flag.risk_score)
+        # Prefer fused HAE score when available on the linked transaction.
+        if flag.transaction is not None and getattr(flag.transaction, "audit_risk_prob", None) is not None:
+            risk = max(risk, _num(flag.transaction.audit_risk_prob))
+        score = risk * 10
+        drivers = None
+        if isinstance(flag.details, dict):
+            drivers = flag.details.get("drivers")
+        if flag.transaction is not None:
+            drivers = drivers or getattr(flag.transaction, "audit_risk_drivers", None)
         candidates.append(_candidate(
             fingerprint=f"anomaly:{flag.id}",
             source_type="anomaly",
@@ -300,8 +309,10 @@ def build_exception_candidates(
             impact_amount=_num((flag.details or {}).get("amount")),
             evidence={
                 "transaction_id": str(flag.transaction_id) if flag.transaction_id else None,
-                "risk_score": _num(flag.risk_score),
+                "risk_score": risk,
                 "details": flag.details or {},
+                "drivers": drivers,
+                "layers": getattr(flag.transaction, "hae_layer_scores", None) if flag.transaction else None,
                 "module_url": "/anomalies",
             },
             recommended_actions=[
@@ -497,14 +508,52 @@ def build_exception_candidates(
             ],
         ))
 
-    return sorted(
-        candidates,
-        key=lambda item: (
-            -SEVERITY_ORDER.get(item["severity"], 0),
-            -float(item.get("impact_amount") or 0),
-            item.get("due_date") or date.max,
-        ),
-    )
+    # HAE LinUCB prioritization for anomaly / fraud-heavy queues.
+    try:
+        from app.engines.audit_bandit import prioritize_candidates
+
+        enriched = []
+        for item in candidates:
+            risk = 0.5
+            if item.get("severity") == "critical":
+                risk = 0.95
+            elif item.get("severity") == "high":
+                risk = 0.8
+            elif item.get("severity") == "medium":
+                risk = 0.55
+            else:
+                risk = 0.3
+            evidence = item.get("evidence") or {}
+            if evidence.get("risk_score") is not None:
+                risk = max(risk, float(evidence.get("risk_score") or 0))
+                if risk > 1:
+                    risk = risk / 100.0
+            enriched.append({
+                **item,
+                "risk_prob": risk,
+                "impact_amount": item.get("impact_amount") or 0,
+                "source_type": item.get("source_type"),
+            })
+        ranked = prioritize_candidates(enriched, org_id=str(org_id))
+        # Keep severity as primary guardrail, bandit priority as secondary.
+        return sorted(
+            ranked,
+            key=lambda item: (
+                -SEVERITY_ORDER.get(item["severity"], 0),
+                -float(item.get("priority_score") or 0),
+                -float(item.get("impact_amount") or 0),
+                item.get("due_date") or date.max,
+            ),
+        )
+    except Exception:
+        return sorted(
+            candidates,
+            key=lambda item: (
+                -SEVERITY_ORDER.get(item["severity"], 0),
+                -float(item.get("impact_amount") or 0),
+                item.get("due_date") or date.max,
+            ),
+        )
 
 
 def refresh_autopilot_exceptions(

@@ -1,6 +1,6 @@
 import uuid
 from sqlalchemy import Column, String, Text, Numeric, Date, DateTime, func, ForeignKey, CheckConstraint, Index
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -43,6 +43,13 @@ class Transaction(Base):
     match_status = Column(String(15), nullable=False, default="unmatched")
     match_confidence = Column(Numeric(5, 2))
     anomaly_score = Column(Numeric(5, 4))
+    audit_risk_score = Column(Numeric(6, 2))  # HAE fused score 0-100
+    audit_risk_prob = Column(Numeric(5, 4))   # HAE fused probability 0-1
+    audit_risk_drivers = Column(JSONB)        # top SHAP / layer drivers
+    hae_layer_scores = Column(JSONB)          # rule/unsup/sup/tft/gnn/assertion breakdown
+    audit_confidence = Column(Numeric(5, 4))  # evidence completeness 0-1
+    audit_assertions = Column(JSONB)          # per-assertion results + evidence trail
+    audit_meta = Column(JSONB)                # optional PO/GRN/JE/account/due_date enrichment
     fraud_flag = Column(Text)
     fraud_review_status = Column(String(30), nullable=False, default="open")
     fraud_review_note = Column(Text)

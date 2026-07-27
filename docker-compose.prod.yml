@@ -1,4 +1,13 @@
 services:
+  # One-shot migrator runs alembic upgrade head before app/workers start.
+  migrate:
+    build: ./backend
+    entrypoint: ["alembic"]
+    command: ["upgrade", "head"]
+    env_file:
+      - ./backend/.env.production
+    restart: "no"
+
   backend:
     build: ./backend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${WEB_CONCURRENCY:-4}
@@ -6,6 +15,9 @@ services:
       - ./backend/.env.production
     ports:
       - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   worker-ocr:
@@ -13,6 +25,9 @@ services:
     command: celery -A app.celery_app worker -Q ocr -c ${OCR_WORKER_CONCURRENCY:-2} --loglevel=${CELERY_LOG_LEVEL:-info}
     env_file:
       - ./backend/.env.production
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   worker-heavy:
@@ -20,6 +35,9 @@ services:
     command: celery -A app.celery_app worker -Q heavy -c ${HEAVY_WORKER_CONCURRENCY:-4} --loglevel=${CELERY_LOG_LEVEL:-info}
     env_file:
       - ./backend/.env.production
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   worker-llm:
@@ -27,6 +45,9 @@ services:
     command: celery -A app.celery_app worker -Q llm -c ${LLM_WORKER_CONCURRENCY:-2} --loglevel=${CELERY_LOG_LEVEL:-info}
     env_file:
       - ./backend/.env.production
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   worker-whatsapp:
@@ -34,6 +55,9 @@ services:
     command: celery -A app.celery_app worker -Q whatsapp -c ${WHATSAPP_WORKER_CONCURRENCY:-2} --loglevel=${CELERY_LOG_LEVEL:-info}
     env_file:
       - ./backend/.env.production
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   beat:
@@ -41,6 +65,9 @@ services:
     command: celery -A app.celery_app beat --loglevel=${CELERY_LOG_LEVEL:-info}
     env_file:
       - ./backend/.env.production
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   frontend:

@@ -1,8 +1,9 @@
-"""Isolation Forest anomaly detection and rule-based flags."""
+"""Isolation Forest anomaly detection, rule-based flags, and HAE-4 orchestration helpers."""
 import math
 
 import pandas as pd
 from sklearn.ensemble import IsolationForest
+from sklearn.neighbors import LocalOutlierFactor
 
 BENFORD = [0.301, 0.176, 0.125, 0.097, 0.079, 0.067, 0.058, 0.051, 0.046]
 
@@ -19,6 +20,27 @@ def train_isolation_forest(transactions_df: pd.DataFrame):
     if len(stats_df) < 2:
         return None, stats_df
     model = IsolationForest(contamination=0.02, random_state=42)
+    model.fit(stats_df[["mean", "std", "count"]].astype(float))
+    return model, stats_df
+
+
+def train_local_outlier_factor(transactions_df: pd.DataFrame):
+    """Fit novelty LOF on vendor aggregates for cold-start anomaly support."""
+    if transactions_df.empty:
+        return None, pd.DataFrame()
+    stats_df = (
+        transactions_df.groupby("vendor_gstin")["amount"]
+        .agg(["mean", "std", "count"])
+        .fillna(0)
+    )
+    if len(stats_df) < 5:
+        return None, stats_df
+    n_neighbors = min(20, max(2, len(stats_df) // 2))
+    model = LocalOutlierFactor(
+        n_neighbors=n_neighbors,
+        contamination=0.02,
+        novelty=True,
+    )
     model.fit(stats_df[["mean", "std", "count"]].astype(float))
     return model, stats_df
 
@@ -42,6 +64,20 @@ def score_transaction(model, stats_df: pd.DataFrame, vendor_gstin: str, amount: 
     amount_risk = 1.0 - math.exp(-amount_z / 3.0)
     risk = max(vendor_risk, amount_risk)
     return round(max(0.0, min(1.0, risk)), 4)
+
+
+def score_lof(model, stats_df: pd.DataFrame, vendor_gstin: str) -> float:
+    if model is None:
+        return 0.5
+    selected = stats_df[stats_df.index == vendor_gstin]
+    if selected.empty:
+        return 0.7
+    features = pd.DataFrame(
+        [[selected.iloc[0]["mean"], selected.iloc[0]["std"], selected.iloc[0]["count"]]],
+        columns=["mean", "std", "count"],
+    )
+    decision = float(model.decision_function(features)[0])
+    return round(max(0.0, min(1.0, 1.0 / (1.0 + math.exp(5.0 * decision)))), 4)
 
 
 def benford_test(amounts: list) -> dict:
