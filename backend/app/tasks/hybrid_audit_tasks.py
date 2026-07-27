@@ -94,8 +94,9 @@ def train_hybrid_audit_models(self, org_id: str, client_id: str | None = None):
 
 @celery_app.task(bind=True, queue="heavy", max_retries=2,
                  autoretry_for=(Exception,), retry_backoff=True)
-def run_hybrid_audit_scoring(self, client_id: str, org_id: str | None = None):
-    """Score a client with full HAE-4 fusion and write anomaly flags."""
+def run_hybrid_audit_scoring(self, client_id: str, org_id: str | None = None,
+                             materiality_override: float | None = None):
+    """Score a client with HAE-5 precision fusion + human-auditor assertions."""
     from app.models.transaction import Transaction
     from app.models.anomaly_flag import AnomalyFlag
     from app.models.audit_ml import AuditEngineRun
@@ -103,6 +104,10 @@ def run_hybrid_audit_scoring(self, client_id: str, org_id: str | None = None):
     from app.engines.graph_fraud_engine import score_graph
     from app.engines.hybrid_audit_engine import score_transactions
     from app.engines.anomaly_detector import benford_test, detect_vendor_spikes
+    from app.engines.audit_assertions_engine import (
+        run_assertion_procedures, assertion_scores_map, confidence_map,
+    )
+    from app.engines.audit_bandit import adaptive_sample_plan
 
     db = SessionLocal()
     try:
@@ -115,38 +120,68 @@ def run_hybrid_audit_scoring(self, client_id: str, org_id: str | None = None):
 
         resolved_org = org_id or str(txns[0].org_id)
 
-        # Clear open/unreviewed machine flags before rewrite
         db.query(AnomalyFlag).filter(
             AnomalyFlag.client_id == client_id,
             AnomalyFlag.reviewed.is_(False),
         ).delete(synchronize_session=False)
 
+        assertion_result = run_assertion_procedures(
+            txns, materiality_override=materiality_override
+        )
+        a_scores = assertion_scores_map(assertion_result)
+        c_scores = confidence_map(assertion_result)
+        a_payloads = assertion_result.get("transaction_assertions") or {}
+
         tft_scores = score_sequences(txns, org_id=resolved_org)
         gnn_scores = score_graph(txns, org_id=resolved_org)
         scored = score_transactions(
-            txns, org_id=resolved_org, tft_scores=tft_scores, gnn_scores=gnn_scores
+            txns,
+            org_id=resolved_org,
+            tft_scores=tft_scores,
+            gnn_scores=gnn_scores,
+            assertion_scores=a_scores,
+            assertion_payloads=a_payloads,
+            confidence_scores=c_scores,
         )
 
         txn_by_id = {str(t.id): t for t in txns}
         flags_created = 0
         high_risk = 0
+        scored_rows = []
         for _, row in scored.iterrows():
             txn = txn_by_id.get(str(row["id"]))
             if not txn:
                 continue
             prob = float(row["audit_risk_prob"])
+            payload = a_payloads.get(str(row["id"])) or {}
             txn.anomaly_score = prob
             txn.audit_risk_prob = prob
             txn.audit_risk_score = float(row["audit_risk_score"])
             txn.audit_risk_drivers = row["drivers"]
+            txn.audit_confidence = float(row.get("audit_confidence") or payload.get("confidence") or 0.5)
+            txn.audit_assertions = {
+                "failed_assertions": payload.get("failed_assertions") or [],
+                "assertions": payload.get("assertions") or {},
+                "evidence": payload.get("evidence") or row.get("evidence"),
+            }
             txn.hae_layer_scores = {
                 "rule": float(row["rule_score"]),
                 "unsupervised": float(row["unsup_score"]),
                 "supervised": float(row["sup_score"]),
                 "temporal": float(row["tft_score"]),
                 "graph": float(row["gnn_score"]),
+                "assertion": float(row.get("assertion_score") or 0),
             }
-            if prob >= 0.65:
+            scored_rows.append({
+                "id": str(txn.id),
+                "amount": float(txn.amount or 0),
+                "audit_risk_prob": prob,
+                "drivers": row["drivers"],
+                "failed_assertions": payload.get("failed_assertions") or [],
+                "evidence": payload.get("evidence"),
+            })
+
+            if prob >= 0.6:
                 high_risk += 1
                 db.add(AnomalyFlag(
                     org_id=txn.org_id,
@@ -158,13 +193,49 @@ def run_hybrid_audit_scoring(self, client_id: str, org_id: str | None = None):
                         "amount": float(txn.amount or 0),
                         "vendor_gstin": txn.vendor_gstin,
                         "audit_risk_score": float(row["audit_risk_score"]),
+                        "audit_confidence": float(txn.audit_confidence or 0),
                         "layers": txn.hae_layer_scores,
                         "drivers": row["drivers"],
                         "rule_flags": row["rule_flags"],
+                        "failed_assertions": payload.get("failed_assertions") or [],
+                        "evidence": payload.get("evidence"),
+                        "recommended_procedures": (payload.get("evidence") or {}).get("recommended_procedures"),
                     },
                 ))
                 flags_created += 1
-            # Surface specialist signals as typed flags when elevated
+
+            # Typed assertion flags (human-auditor language)
+            for assertion_name in payload.get("failed_assertions") or []:
+                assertion_blob = (payload.get("assertions") or {}).get(assertion_name) or {}
+                a_score = float(assertion_blob.get("score") or 0)
+                if a_score < 0.55:
+                    continue
+                flag_type = {
+                    "cutoff": "cutoff",
+                    "completeness": "completeness",
+                    "existence": "existence",
+                    "classification": "classification",
+                    "accuracy": "classification",
+                    "related_party": "related_party",
+                    "journal_entry": "journal_entry",
+                    "three_way_match": "three_way_match",
+                    "aging": "aging",
+                }.get(assertion_name, assertion_name)[:30]
+                db.add(AnomalyFlag(
+                    org_id=txn.org_id,
+                    client_id=client_id,
+                    transaction_id=txn.id,
+                    flag_type=flag_type,
+                    risk_score=a_score,
+                    details={
+                        "assertion": assertion_name,
+                        "detail": assertion_blob.get("detail"),
+                        "evidence": payload.get("evidence"),
+                        "amount": float(txn.amount or 0),
+                    },
+                ))
+                flags_created += 1
+
             if float(row["tft_score"]) >= 0.75:
                 db.add(AnomalyFlag(
                     org_id=txn.org_id,
@@ -224,11 +295,32 @@ def run_hybrid_audit_scoring(self, client_id: str, org_id: str | None = None):
             ))
             flags_created += 1
 
+        mat = assertion_result.get("materiality") or {}
+        sample = adaptive_sample_plan(
+            scored_rows,
+            materiality=float(mat.get("planning_materiality") or 100000),
+            performance_materiality=float(mat.get("performance_materiality") or 75000),
+            clearly_trivial=float(mat.get("clearly_trivial") or 3750),
+            review_budget=25,
+            org_id=resolved_org,
+        )
+
         summary = {
+            "engine": "HAE-5",
             "scored": len(scored),
             "flags": flags_created,
             "high_risk": high_risk,
             "benford": benford,
+            "materiality": mat,
+            "period_end": assertion_result.get("period_end"),
+            "assertion_coverage": assertion_result.get("coverage"),
+            "population": assertion_result.get("population"),
+            "sample_plan": {
+                "selected_count": sample.get("selected_count"),
+                "population_coverage_pct": sample.get("population_coverage_pct"),
+                "residual_high_risk_count": sample.get("residual_high_risk_count"),
+                "stratum_counts": sample.get("stratum_counts"),
+            },
         }
         db.add(AuditEngineRun(
             org_id=resolved_org,

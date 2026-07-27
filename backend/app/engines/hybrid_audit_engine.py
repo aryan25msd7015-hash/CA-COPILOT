@@ -225,17 +225,20 @@ def fit_stacker(base_scores: pd.DataFrame, labels: np.ndarray) -> dict[str, Any]
 
 def score_stacker(bundle: dict[str, Any] | None, base_scores: pd.DataFrame) -> np.ndarray:
     n = len(base_scores)
-    cols = [c for c in ["rule_score", "unsup_score", "sup_score", "tft_score", "gnn_score"] if c in base_scores.columns]
+    cols = [c for c in [
+        "rule_score", "unsup_score", "sup_score", "tft_score", "gnn_score", "assertion_score",
+    ] if c in base_scores.columns]
     if n == 0:
         return np.array([])
     if not bundle or bundle.get("model") is None:
-        # Weighted fallback fusion
+        # Precision-first fusion: assertions + supervised dominate when present
         weights = {
-            "rule_score": 0.2,
-            "unsup_score": 0.25,
-            "sup_score": 0.25,
-            "tft_score": 0.15,
-            "gnn_score": 0.15,
+            "assertion_score": 0.28,
+            "rule_score": 0.14,
+            "unsup_score": 0.12,
+            "sup_score": 0.22,
+            "tft_score": 0.12,
+            "gnn_score": 0.12,
         }
         total = np.zeros(n)
         wsum = 0.0
@@ -245,7 +248,18 @@ def score_stacker(bundle: dict[str, Any] | None, base_scores: pd.DataFrame) -> n
                 wsum += w
         if wsum <= 0:
             return np.full(n, 0.5)
-        return np.clip(total / wsum, 0.0, 1.0)
+        fused = total / wsum
+        # Human-auditor compounding: if assertion and any ML layer both high, escalate
+        if "assertion_score" in base_scores.columns:
+            a = base_scores["assertion_score"].astype(float).values
+            peer = np.maximum.reduce([
+                base_scores[c].astype(float).values
+                for c in ("rule_score", "unsup_score", "sup_score", "tft_score", "gnn_score")
+                if c in base_scores.columns
+            ] or [np.zeros(n)])
+            boost = np.where((a >= 0.6) & (peer >= 0.55), 0.08, 0.0)
+            fused = np.clip(fused + boost, 0.0, 1.0)
+        return fused
     use_cols = bundle.get("columns") or cols
     for col in use_cols:
         if col not in base_scores.columns:
@@ -270,7 +284,9 @@ def explain_drivers(
     drivers: list[list[dict]] = [[] for _ in range(n)]
 
     # Layer contributions
-    layer_cols = [c for c in ["rule_score", "unsup_score", "sup_score", "tft_score", "gnn_score"] if c in base_scores.columns]
+    layer_cols = [c for c in [
+        "rule_score", "unsup_score", "sup_score", "tft_score", "gnn_score", "assertion_score",
+    ] if c in base_scores.columns]
     for i in range(n):
         layer_bits = []
         for col in layer_cols:
@@ -409,6 +425,7 @@ def train_org_models(db, org_id: str, client_id: str | None = None) -> dict:
                 "sup_score": score_supervised(supervised, features.loc[mask].reset_index(drop=True)),
                 "tft_score": np.full(mask.sum(), 0.5),
                 "gnn_score": np.full(mask.sum(), 0.5),
+                "assertion_score": np.full(mask.sum(), 0.5),
             })
             stacker = fit_stacker(base, y[mask])
             if stacker:
@@ -428,13 +445,17 @@ def score_transactions(
     org_id: str | None = None,
     tft_scores: Optional[dict[str, float]] = None,
     gnn_scores: Optional[dict[str, float]] = None,
+    assertion_scores: Optional[dict[str, float]] = None,
+    assertion_payloads: Optional[dict[str, dict]] = None,
+    confidence_scores: Optional[dict[str, float]] = None,
 ) -> pd.DataFrame:
-    """Score transactions with full HAE fusion. Returns one row per transaction."""
+    """Score transactions with HAE-5 precision fusion. Returns one row per transaction."""
     frame = transactions_to_frame(rows)
     if frame.empty:
         return pd.DataFrame(columns=[
             "id", "rule_score", "unsup_score", "sup_score", "tft_score", "gnn_score",
-            "audit_risk_score", "drivers", "rule_flags",
+            "assertion_score", "audit_risk_score", "audit_risk_prob", "audit_confidence",
+            "drivers", "rule_flags", "evidence", "failed_assertions",
         ])
 
     features = build_transaction_features(frame)
@@ -449,6 +470,8 @@ def score_transactions(
     sup_scores = score_supervised(supervised, features)
     tft = np.array([float((tft_scores or {}).get(str(i), 0.5)) for i in features["id"]])
     gnn = np.array([float((gnn_scores or {}).get(str(i), 0.5)) for i in features["id"]])
+    assertion = np.array([float((assertion_scores or {}).get(str(i), 0.05)) for i in features["id"]])
+    confidence = np.array([float((confidence_scores or {}).get(str(i), 0.5)) for i in features["id"]])
 
     rule_map = dict(zip(rules["id"].astype(str), rules["rule_score"]))
     flag_map = dict(zip(rules["id"].astype(str), rules["rule_flags"]))
@@ -459,12 +482,39 @@ def score_transactions(
         "sup_score": sup_scores,
         "tft_score": tft,
         "gnn_score": gnn,
+        "assertion_score": assertion,
     })
     fused = score_stacker(stacker, base)
-    drivers = explain_drivers(features, supervised, base, fused)
+    # Precision calibration: when evidence is thin, dampen extreme scores slightly
+    # (avoid over-confident false positives); when assertions fire hard, keep high.
+    calibrated = fused.copy()
+    calibrated = np.where(
+        (assertion < 0.35) & (confidence < 0.4) & (fused > 0.75),
+        fused * 0.9,
+        calibrated,
+    )
+    calibrated = np.where(assertion >= 0.75, np.maximum(calibrated, assertion * 0.95), calibrated)
+    calibrated = np.clip(calibrated, 0.0, 1.0)
+
+    drivers = explain_drivers(features, supervised, base, calibrated)
+    # Append assertion drivers in auditor language
+    payloads = assertion_payloads or {}
+    for i, tid in enumerate(features["id"].astype(str).tolist()):
+        payload = payloads.get(tid) or {}
+        for assertion_name in (payload.get("failed_assertions") or [])[:3]:
+            drivers[i].append({
+                "feature": f"assertion:{assertion_name}",
+                "contribution": float((payload.get("assertions") or {}).get(assertion_name, {}).get("score") or assertion[i]),
+                "direction": "increases_risk",
+            })
+        drivers[i] = drivers[i][:6]
+
     out = base.copy()
-    out["audit_risk_score"] = np.round(fused * 100.0, 2)  # 0-100 calibrated display score
-    out["audit_risk_prob"] = np.round(fused, 4)
+    out["audit_risk_score"] = np.round(calibrated * 100.0, 2)
+    out["audit_risk_prob"] = np.round(calibrated, 4)
+    out["audit_confidence"] = np.round(confidence, 4)
     out["drivers"] = drivers
     out["rule_flags"] = [flag_map.get(str(i), []) for i in features["id"]]
+    out["evidence"] = [(payloads.get(str(i)) or {}).get("evidence") for i in features["id"]]
+    out["failed_assertions"] = [(payloads.get(str(i)) or {}).get("failed_assertions") or [] for i in features["id"]]
     return out

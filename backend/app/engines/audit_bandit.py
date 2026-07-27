@@ -198,11 +198,19 @@ def adaptive_sample_plan(
     materiality: float = 100000.0,
     review_budget: int = 25,
     org_id: str | None = None,
+    performance_materiality: float | None = None,
+    clearly_trivial: float | None = None,
 ) -> dict[str, Any]:
     """
-    Materiality-aware adaptive substantive sample from fused risk scores.
-    Uses bandit escalate arm preference when available.
+    Auditor-fluent substantive sample:
+      1) 100% of items >= performance materiality
+      2) Monetary-unit / risk-weighted selection of remaining population
+      3) Strata coverage (high/med/low risk) so low-risk mass is not ignored
+      4) Report population coverage % and residual unsampled high-risk
     """
+    pm = float(performance_materiality or (materiality * 0.75))
+    trivial = float(clearly_trivial or (pm * 0.05))
+
     candidates = []
     for row in scored_transactions:
         risk = float(row.get("audit_risk_prob") or row.get("risk_prob") or 0)
@@ -214,24 +222,90 @@ def adaptive_sample_plan(
             "risk_prob": risk,
             "impact_amount": amount,
             "source_type": row.get("source_type") or "anomaly",
+            "stratum": (
+                "material" if amount >= pm else
+                "high_risk" if risk >= 0.65 else
+                "medium_risk" if risk >= 0.4 else
+                "low_risk"
+            ),
         })
-    ranked = prioritize_candidates(candidates, org_id=org_id, explore=True)
-    selected = []
-    covered = 0.0
+
+    population_amount = sum(c["impact_amount"] for c in candidates) or 1.0
+    population_count = len(candidates)
+
+    # Mandatory: all material items
+    selected_ids: set[str] = set()
+    selected: list[dict[str, Any]] = []
+    for item in sorted(candidates, key=lambda r: -r["impact_amount"]):
+        tid = str(item.get("id") or item.get("transaction_id"))
+        if item["impact_amount"] >= pm and tid not in selected_ids:
+            selected.append({**item, "selection_reason": "performance_materiality"})
+            selected_ids.add(tid)
+
+    # Bandit rank the rest
+    remaining = [c for c in candidates if str(c.get("id") or c.get("transaction_id")) not in selected_ids]
+    ranked = prioritize_candidates(remaining, org_id=org_id, explore=True)
+
+    # MUS-like weight: amount * (0.35 + 0.65*risk)
+    def mus_weight(item: dict) -> float:
+        return float(item["impact_amount"]) * (0.35 + 0.65 * float(item.get("risk_prob") or 0))
+
+    ranked.sort(key=lambda r: (-mus_weight(r), -float(r.get("priority_score") or 0)))
+
+    # Ensure each stratum gets at least a slice of remaining budget
+    budget_left = max(0, review_budget - len(selected))
+    stratum_quota = {
+        "high_risk": max(1, budget_left // 2),
+        "medium_risk": max(1, budget_left // 4),
+        "low_risk": max(1, budget_left // 8),
+        "material": 0,
+    }
+    stratum_taken = {k: 0 for k in stratum_quota}
+
     for item in ranked:
-        if len(selected) >= review_budget and covered >= materiality:
+        if len(selected) >= review_budget:
             break
-        if item.get("bandit_arm") == 0 and item.get("risk_prob", 0) < 0.55 and covered >= materiality * 0.5:
+        tid = str(item.get("id") or item.get("transaction_id"))
+        if tid in selected_ids:
             continue
-        selected.append(item)
-        covered += float(item.get("impact_amount") or 0)
+        if item["impact_amount"] < trivial and item.get("risk_prob", 0) < 0.45:
+            continue
+        stratum = item.get("stratum") or "low_risk"
+        # Prefer filling quotas first
+        if stratum_taken.get(stratum, 0) >= stratum_quota.get(stratum, 0) and len(selected) > review_budget * 0.7:
+            # still allow exceptional high MUS weight
+            if mus_weight(item) < pm * 0.2:
+                continue
+        selected.append({**item, "selection_reason": f"mus_risk:{stratum}"})
+        selected_ids.add(tid)
+        stratum_taken[stratum] = stratum_taken.get(stratum, 0) + 1
+
+    covered = sum(float(s.get("impact_amount") or 0) for s in selected)
+    high_risk_pop = [c for c in candidates if c["risk_prob"] >= 0.65]
+    high_risk_unsampled = [
+        c for c in high_risk_pop
+        if str(c.get("id") or c.get("transaction_id")) not in selected_ids
+    ]
+
+    by_stratum: dict[str, int] = {}
+    for s in selected:
+        key = s.get("stratum") or "unknown"
+        by_stratum[key] = by_stratum.get(key, 0) + 1
 
     return {
         "materiality": materiality,
+        "performance_materiality": pm,
+        "clearly_trivial": trivial,
         "review_budget": review_budget,
         "selected_count": len(selected),
         "coverage_amount": round(covered, 2),
         "coverage_ratio": round(covered / max(materiality, 1.0), 4),
+        "population_coverage_pct": round(100.0 * covered / population_amount, 2),
+        "population_count": population_count,
+        "population_amount": round(population_amount, 2),
+        "stratum_counts": by_stratum,
+        "residual_high_risk_count": len(high_risk_unsampled),
+        "residual_high_risk_amount": round(sum(c["impact_amount"] for c in high_risk_unsampled), 2),
         "sample": [
             {
                 "id": s.get("id") or s.get("transaction_id"),
@@ -240,6 +314,10 @@ def adaptive_sample_plan(
                 "risk_prob": s.get("risk_prob"),
                 "impact_amount": s.get("impact_amount"),
                 "drivers": s.get("drivers"),
+                "stratum": s.get("stratum"),
+                "selection_reason": s.get("selection_reason"),
+                "failed_assertions": s.get("failed_assertions"),
+                "evidence": s.get("evidence"),
             }
             for s in selected
         ],

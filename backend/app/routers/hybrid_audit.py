@@ -24,15 +24,23 @@ class TrainRequest(BaseModel):
     async_run: bool = True
 
 
+class SampleRequest(BaseModel):
+    client_id: str
+    materiality: float | None = Field(default=None, gt=0)
+    review_budget: int = Field(default=25, ge=1, le=500)
+
+
 class ScoreRequest(BaseModel):
     client_id: str
     async_run: bool = True
+    materiality_override: float | None = Field(default=None, gt=0)
 
 
-class SampleRequest(BaseModel):
+class AssertionsRequest(BaseModel):
     client_id: str
-    materiality: float = Field(default=100000.0, gt=0)
-    review_budget: int = Field(default=25, ge=1, le=500)
+    materiality_override: float | None = Field(default=None, gt=0)
+    period_end: str | None = None
+    cutoff_window_days: int = Field(default=7, ge=1, le=31)
 
 
 class PrioritizeRequest(BaseModel):
@@ -62,8 +70,16 @@ def hae_status(request: Request, db: Session = Depends(get_db), _=Depends(get_cu
         .count()
     )
     return {
-        "engine": "HAE-4",
-        "layers": ["rules", "isolation_forest_lof", "xgboost_lightgbm", "temporal_transformer", "graph_sage", "linucb_bandit"],
+        "engine": "HAE-5",
+        "mode": "human_auditor_precision",
+        "layers": [
+            "assertions", "rules", "isolation_forest_lof", "xgboost_lightgbm",
+            "temporal_transformer", "graph_sage", "linucb_bandit", "meta_fusion",
+        ],
+        "assertions": [
+            "cutoff", "completeness", "existence", "classification", "related_party",
+            "journal_entry", "three_way_match", "aging", "accuracy",
+        ],
         "scored_transactions": scored,
         "local_artifacts": artifacts,
         "registry": [
@@ -126,9 +142,13 @@ def score_client(
     if not client:
         raise HTTPException(404, "Client not found")
     if payload.async_run:
-        task = run_hybrid_audit_scoring.delay(payload.client_id, org_id=org_id)
+        task = run_hybrid_audit_scoring.delay(
+            payload.client_id, org_id=org_id, materiality_override=payload.materiality_override
+        )
         return {"queued": True, "task_id": task.id, "client_id": payload.client_id}
-    result = run_hybrid_audit_scoring.run(payload.client_id, org_id=org_id)
+    result = run_hybrid_audit_scoring.run(
+        payload.client_id, org_id=org_id, materiality_override=payload.materiality_override
+    )
     return {"queued": False, "result": result}
 
 
@@ -217,6 +237,51 @@ def prioritize_queue(
     return {"count": len(ranked), "items": ranked}
 
 
+@router.post("/assertions")
+def run_assertions(
+    payload: AssertionsRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """Run human-auditor assertion procedures over a client transaction log."""
+    from datetime import date as date_cls
+    from app.engines.audit_assertions_engine import run_assertion_procedures
+
+    org_id = request.state.org_id
+    client = scoped(db, Client, org_id).filter(Client.id == payload.client_id).first()
+    if not client:
+        raise HTTPException(404, "Client not found")
+    txns = scoped(db, Transaction, org_id).filter(Transaction.client_id == payload.client_id).all()
+    period_end = None
+    if payload.period_end:
+        try:
+            period_end = date_cls.fromisoformat(payload.period_end)
+        except ValueError as exc:
+            raise HTTPException(422, "period_end must be YYYY-MM-DD") from exc
+    result = run_assertion_procedures(
+        txns,
+        period_end=period_end,
+        materiality_override=payload.materiality_override,
+        cutoff_window_days=payload.cutoff_window_days,
+    )
+    db.add(AuditEngineRun(
+        org_id=org_id,
+        client_id=payload.client_id,
+        run_type="assertions",
+        status="completed",
+        summary={
+            "materiality": result.get("materiality"),
+            "period_end": result.get("period_end"),
+            "population": result.get("population"),
+            "findings": len(result.get("findings") or []),
+            "coverage": result.get("coverage"),
+        },
+    ))
+    db.commit()
+    return result
+
+
 @router.post("/sample-plan")
 def sample_plan(
     payload: SampleRequest,
@@ -225,6 +290,7 @@ def sample_plan(
     _=Depends(get_current_user),
 ):
     from app.engines.audit_bandit import adaptive_sample_plan
+    from app.engines.audit_assertions_engine import compute_materiality
 
     org_id = request.state.org_id
     client = scoped(db, Client, org_id).filter(Client.id == payload.client_id).first()
@@ -235,19 +301,26 @@ def sample_plan(
         .filter(Transaction.client_id == payload.client_id)
         .all()
     )
+    amounts = [float(t.amount or 0) for t in txns]
+    mat = compute_materiality(amounts, override=payload.materiality)
     scored = []
     for t in txns:
+        assertions = t.audit_assertions if isinstance(getattr(t, "audit_assertions", None), dict) else {}
         scored.append({
             "id": str(t.id),
             "transaction_id": str(t.id),
             "amount": float(t.amount or 0),
             "audit_risk_prob": float(t.audit_risk_prob or t.anomaly_score or 0),
             "drivers": t.audit_risk_drivers,
+            "failed_assertions": assertions.get("failed_assertions"),
+            "evidence": assertions.get("evidence"),
             "source_type": "anomaly",
         })
     plan = adaptive_sample_plan(
         scored,
-        materiality=payload.materiality,
+        materiality=mat["planning_materiality"],
+        performance_materiality=mat["performance_materiality"],
+        clearly_trivial=mat["clearly_trivial"],
         review_budget=payload.review_budget,
         org_id=org_id,
     )
@@ -259,7 +332,10 @@ def sample_plan(
         summary={
             "selected_count": plan["selected_count"],
             "coverage_amount": plan["coverage_amount"],
+            "population_coverage_pct": plan.get("population_coverage_pct"),
             "materiality": plan["materiality"],
+            "performance_materiality": plan.get("performance_materiality"),
+            "residual_high_risk_count": plan.get("residual_high_risk_count"),
         },
     ))
     db.commit()
@@ -305,8 +381,10 @@ def _txn_risk_out(t: Transaction) -> dict[str, Any]:
         "anomaly_score": float(t.anomaly_score or 0),
         "audit_risk_score": float(t.audit_risk_score or 0) if t.audit_risk_score is not None else None,
         "audit_risk_prob": float(t.audit_risk_prob or 0) if t.audit_risk_prob is not None else None,
+        "audit_confidence": float(t.audit_confidence or 0) if getattr(t, "audit_confidence", None) is not None else None,
         "drivers": t.audit_risk_drivers,
         "layers": t.hae_layer_scores,
+        "assertions": getattr(t, "audit_assertions", None),
         "fraud_flag": t.fraud_flag,
         "match_status": t.match_status,
     }

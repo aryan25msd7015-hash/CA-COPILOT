@@ -155,7 +155,7 @@ export default function AnomaliesPage() {
   ], [noteById, review]);
 
   return <div className="space-y-5">
-    <PageHeader title="Anomaly Dashboard" subtitle="HAE-4 hybrid engine: rules, Isolation Forest/LOF, LightGBM, temporal + graph scores, LinUCB priority." />
+    <PageHeader title="Anomaly Dashboard" subtitle="HAE-5 human-auditor precision: assertion tests (cut-off, completeness, existence, JE, three-way), ML fusion, and LinUCB sampling." />
     <div className="grid gap-3 md:grid-cols-4">
       {STATUSES.map(item => <button key={item} onClick={() => setStatus(item)} className={`rounded-xl border p-4 text-left ${status === item ? 'border-gray-900 bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>
         <p className="text-xs opacity-70">{item.replaceAll('_', ' ')}</p>

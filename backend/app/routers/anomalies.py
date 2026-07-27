@@ -209,6 +209,14 @@ def _flag_out(f: AnomalyFlag) -> dict:
         "details": details, "reviewed": f.reviewed,
         "drivers": drivers,
         "layers": layers,
+        "failed_assertions": (details.get("failed_assertions") if isinstance(details, dict) else None)
+            or ((f.transaction.audit_assertions or {}).get("failed_assertions")
+                if f.transaction and isinstance(getattr(f.transaction, "audit_assertions", None), dict) else None),
+        "evidence": (details.get("evidence") if isinstance(details, dict) else None)
+            or ((f.transaction.audit_assertions or {}).get("evidence")
+                if f.transaction and isinstance(getattr(f.transaction, "audit_assertions", None), dict) else None),
+        "audit_confidence": float(f.transaction.audit_confidence)
+            if f.transaction and getattr(f.transaction, "audit_confidence", None) is not None else None,
         "review_status": f.review_status or ("confirmed" if f.reviewed else "open"),
         "review_note": f.review_note,
         "reviewed_by_user_id": str(f.reviewed_by_user_id) if f.reviewed_by_user_id else None,
