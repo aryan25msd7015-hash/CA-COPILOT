@@ -40,6 +40,10 @@ def _txn_out(row: Transaction) -> dict:
         "fraud_scanned_at": row.fraud_scanned_at.isoformat() if row.fraud_scanned_at else None,
         "match_status": row.match_status,
         "anomaly_score": float(row.anomaly_score or 0) if row.anomaly_score is not None else None,
+        "audit_risk_score": float(row.audit_risk_score) if getattr(row, "audit_risk_score", None) is not None else None,
+        "audit_risk_prob": float(row.audit_risk_prob) if getattr(row, "audit_risk_prob", None) is not None else None,
+        "drivers": getattr(row, "audit_risk_drivers", None),
+        "layers": getattr(row, "hae_layer_scores", None),
     }
 
 

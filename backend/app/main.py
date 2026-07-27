@@ -14,7 +14,7 @@ from app.config import settings
 from app.middleware.tenant import tenant_middleware
 from app.routers import (
     anomalies, audit_papers, auth, autopilot, benchmarking, clients, deadlines, documents, events,
-    diagnostics, health_scores, integrations, invoices, notices, organizations, query, reconciliation,
+    diagnostics, health_scores, hybrid_audit, integrations, invoices, notices, organizations, query, reconciliation,
     tasks, users, whatsapp, extensions, practice_ops, razorpay as razorpay_router,
     google_auth as google_auth_router, email as email_router,
 )
@@ -108,6 +108,7 @@ ROUTERS = [
     (health_scores.router, "/health-scores", "health-scores"),
     (audit_papers.router, "/audit-papers", "audit-papers"),
     (anomalies.router, "/anomalies", "anomalies"),
+    (hybrid_audit.router, "/hybrid-audit", "hybrid-audit"),
     (invoices.router, "/invoices", "invoices"),
     (integrations.router, "/integrations", "integrations"),
     (diagnostics.router, "/diagnostics", "diagnostics"),

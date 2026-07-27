@@ -25,10 +25,12 @@ export default function DataGrid<T extends object>({
     minWidth: 120,
   }), []);
 
+  const safeRows = Array.isArray(rows) ? rows : [];
+
   return (
     <div className="ag-theme-alpine apple-grid w-full overflow-hidden rounded-2xl border border-slate-200/70 bg-white/80 shadow-sm" style={{ minHeight: 180 }}>
       <AgGridReact<T>
-        rowData={rows}
+        rowData={safeRows}
         columnDefs={columns}
         defaultColDef={defaultColDef}
         domLayout="autoHeight"

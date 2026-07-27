@@ -44,6 +44,8 @@ services:
       AWS_REGION: ap-south-1
       FRONTEND_URL: http://localhost:3000
       ENV: development
+      # CI/local compose migrate explicitly (quality.yml + docs); avoid race with entrypoint.
+      SKIP_DB_MIGRATE: "1"
     depends_on:
       postgres:
         condition: service_healthy

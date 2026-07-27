@@ -13,7 +13,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application source
 COPY . .
 
+# Migrate on every container start, then hand off to the process command
+RUN chmod +x /app/scripts/entrypoint.sh
+
 # Drop to non-root
 USER app
 
+ENTRYPOINT ["/app/scripts/entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

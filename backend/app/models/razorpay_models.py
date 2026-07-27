@@ -57,7 +57,7 @@ class RazorpayEvent(Base):
     razorpay_subscription_id = Column(String(64), nullable=True, index=True)
     razorpay_refund_id = Column(String(64), nullable=True, index=True)
 
-    invoice_id = Column(UUID(as_uuid=False), ForeignKey("invoices.id"), nullable=True, index=True)
+    invoice_id = Column(UUID(as_uuid=False), ForeignKey("practice_invoices.id"), nullable=True, index=True)
     subscription_id = Column(UUID(as_uuid=False), ForeignKey("razorpay_subscriptions.id"), nullable=True, index=True)
 
     received_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)

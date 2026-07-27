@@ -70,14 +70,37 @@ def generate_audit_observations_fallback(tb: dict, ratios: dict, anomalies: list
             "Revenue recognition, purchase cut-off, or expense classification may be misstated.",
             "Perform analytical review against prior period, GST turnover, and purchase register.",
         ))
-    for anomaly in anomalies[:3]:
+    for anomaly in anomalies[:5]:
+        drivers = anomaly.get("drivers") or []
+        driver_txt = ""
+        if isinstance(drivers, list) and drivers:
+            top = ", ".join(
+                f"{d.get('feature')} ({d.get('contribution')})"
+                for d in drivers[:3] if isinstance(d, dict)
+            )
+            if top:
+                driver_txt = f" HAE drivers: {top}."
+        layers = anomaly.get("layers") or {}
+        layer_txt = ""
+        if isinstance(layers, dict) and layers:
+            layer_txt = " Layer scores: " + ", ".join(f"{k}={v}" for k, v in list(layers.items())[:5]) + "."
         observations.append((
             str(anomaly.get("type", "Flagged anomaly")).replace("_", " ").title(),
             "internal control",
-            "High" if float(anomaly.get("risk_score") or 0) >= 70 else "Medium",
-            str(anomaly.get("details") or "A system anomaly was linked to this client."),
-            "The item may affect audit risk assessment and substantive testing scope.",
+            "High" if float(anomaly.get("risk_score") or 0) >= 70 or float(anomaly.get("risk_score") or 0) >= 0.7 else "Medium",
+            str(anomaly.get("details") or "A system anomaly was linked to this client.") + driver_txt,
+            "The item may affect audit risk assessment and substantive testing scope." + layer_txt,
             "Review source documents, management explanations, and approval trail.",
+        ))
+    sample = anomalies[0].get("sample_plan") if anomalies and isinstance(anomalies[0], dict) else None
+    if isinstance(sample, dict) and sample.get("selected_count"):
+        observations.append((
+            "Adaptive substantive sample",
+            "audit sampling",
+            "Medium",
+            f"HAE bandit selected {sample.get('selected_count')} items covering ₹{sample.get('coverage_amount')} against materiality ₹{sample.get('materiality')}.",
+            "Sample composition is risk-weighted and should be validated by the engagement partner.",
+            "Execute selected voucher tests and document conclusions in the working paper binder.",
         ))
     if not observations:
         observations.append((

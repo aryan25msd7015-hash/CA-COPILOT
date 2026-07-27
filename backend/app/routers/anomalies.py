@@ -130,12 +130,66 @@ def mark_reviewed(flag_id: str, request: Request,
     flag.reviewed = review_status != "open"
     flag.reviewed_by_user_id = user.id if flag.reviewed else None
     flag.reviewed_at = datetime.now(timezone.utc) if flag.reviewed else None
+    # Feed HAE LinUCB bandit with review outcome for adaptive prioritization.
+    try:
+        from app.engines.audit_bandit import (
+            context_vector, record_bandit_feedback, prioritize_candidates,
+        )
+        from app.models.audit_ml import AuditBanditEvent
+
+        amount = 0.0
+        if flag.transaction and flag.transaction.amount is not None:
+            amount = float(flag.transaction.amount)
+        elif isinstance(flag.details, dict):
+            amount = float((flag.details or {}).get("amount") or 0)
+        risk = float(flag.risk_score or 0)
+        if risk > 1:
+            risk = risk / 100.0
+        age_hours = 0.0
+        if flag.created_at:
+            age_hours = max(0.0, (datetime.now(timezone.utc) - flag.created_at).total_seconds() / 3600.0)
+        ctx = context_vector(
+            risk_prob=risk,
+            impact_amount=amount,
+            age_hours=age_hours,
+            source_anomaly=1.0,
+        )
+        # Infer the arm the prioritizer would have chosen, then update on outcome.
+        ranked = prioritize_candidates([{
+            "id": str(flag.id),
+            "risk_prob": risk,
+            "impact_amount": amount,
+            "age_hours": age_hours,
+            "source_type": "anomaly",
+            "flag_type": flag.flag_type,
+        }], org_id=str(request.state.org_id))
+        arm = int((ranked[0] if ranked else {}).get("bandit_arm") or 1)
+        result = record_bandit_feedback(str(request.state.org_id), ctx, arm, review_status)
+        db.add(AuditBanditEvent(
+            org_id=flag.org_id,
+            candidate_id=str(flag.id),
+            arm=arm,
+            reward=result["reward"],
+            review_status=review_status,
+            context={"vector": ctx.tolist(), "user_id": str(user.id)},
+        ))
+    except Exception:
+        pass
     db.commit()
     db.refresh(flag)
     return _flag_out(flag)
 
 
 def _flag_out(f: AnomalyFlag) -> dict:
+    details = f.details or {}
+    drivers = None
+    layers = None
+    if isinstance(details, dict):
+        drivers = details.get("drivers")
+        layers = details.get("layers")
+    if f.transaction is not None:
+        drivers = drivers or getattr(f.transaction, "audit_risk_drivers", None)
+        layers = layers or getattr(f.transaction, "hae_layer_scores", None)
     return {
         "id": str(f.id), "client_id": str(f.client_id),
         "client_name": f.client.name if f.client else None,
@@ -148,9 +202,21 @@ def _flag_out(f: AnomalyFlag) -> dict:
             "tax_amount": float(f.transaction.tax_amount or 0) if f.transaction.tax_amount is not None else None,
             "date": f.transaction.date.isoformat() if f.transaction.date else None,
             "match_status": f.transaction.match_status,
+            "audit_risk_score": float(f.transaction.audit_risk_score) if getattr(f.transaction, "audit_risk_score", None) is not None else None,
+            "audit_risk_prob": float(f.transaction.audit_risk_prob) if getattr(f.transaction, "audit_risk_prob", None) is not None else None,
         } if f.transaction else None,
         "flag_type": f.flag_type, "risk_score": float(f.risk_score or 0),
-        "details": f.details, "reviewed": f.reviewed,
+        "details": details, "reviewed": f.reviewed,
+        "drivers": drivers,
+        "layers": layers,
+        "failed_assertions": (details.get("failed_assertions") if isinstance(details, dict) else None)
+            or ((f.transaction.audit_assertions or {}).get("failed_assertions")
+                if f.transaction and isinstance(getattr(f.transaction, "audit_assertions", None), dict) else None),
+        "evidence": (details.get("evidence") if isinstance(details, dict) else None)
+            or ((f.transaction.audit_assertions or {}).get("evidence")
+                if f.transaction and isinstance(getattr(f.transaction, "audit_assertions", None), dict) else None),
+        "audit_confidence": float(f.transaction.audit_confidence)
+            if f.transaction and getattr(f.transaction, "audit_confidence", None) is not None else None,
         "review_status": f.review_status or ("confirmed" if f.reviewed else "open"),
         "review_note": f.review_note,
         "reviewed_by_user_id": str(f.reviewed_by_user_id) if f.reviewed_by_user_id else None,

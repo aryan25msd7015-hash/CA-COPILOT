@@ -17,6 +17,13 @@ interface FlagTransaction {
   tax_amount?: number;
   date?: string;
   match_status?: string;
+  audit_risk_score?: number;
+  audit_risk_prob?: number;
+}
+interface Driver {
+  feature?: string;
+  contribution?: number;
+  direction?: string;
 }
 interface Flag {
   id: string;
@@ -25,6 +32,8 @@ interface Flag {
   client_name?: string;
   risk_score: number;
   details?: Record<string, unknown>;
+  drivers?: Driver[];
+  layers?: Record<string, number>;
   reviewed: boolean;
   review_status: string;
   review_note?: string;
@@ -39,8 +48,22 @@ interface Summary {
   false_positive: SummaryBucket;
   needs_followup: SummaryBucket;
 }
+interface PriorityItem {
+  id: string;
+  flag_type?: string;
+  priority_score?: number;
+  bandit_arm_label?: string;
+  risk_prob?: number;
+  impact_amount?: number;
+  drivers?: Driver[];
+}
 
 const STATUSES = ['open', 'confirmed', 'needs_followup', 'false_positive'];
+
+function formatDrivers(drivers?: Driver[]) {
+  if (!drivers?.length) return '-';
+  return drivers.slice(0, 3).map(d => `${d.feature}:${Number(d.contribution || 0).toFixed(2)}`).join(' · ');
+}
 
 export default function AnomaliesPage() {
   const [type, setType] = useState('');
@@ -51,6 +74,11 @@ export default function AnomaliesPage() {
   const [noteById, setNoteById] = useState<Record<string, string>>({});
   const clients = useQuery<Client[]>({ queryKey: ['clients'], queryFn: () => api.get('/clients').then(r => r.data) });
   const summary = useQuery<Summary>({ queryKey: ['anomaly-summary'], queryFn: () => api.get('/anomalies/summary').then(r => r.data) });
+  const haeStatus = useQuery({ queryKey: ['hae-status'], queryFn: () => api.get('/hybrid-audit/status').then(r => r.data) });
+  const prioritized = useQuery<{ count: number; items: PriorityItem[] }>({
+    queryKey: ['hae-prioritize', clientId],
+    queryFn: () => api.post('/hybrid-audit/prioritize', { client_id: clientId || undefined, limit: 8 }).then(r => r.data),
+  });
   const query = useQuery<Flag[]>({
     queryKey: ['anomalies', type, status, clientId, minRisk, search],
     queryFn: () => api.get('/anomalies', {
@@ -72,8 +100,14 @@ export default function AnomaliesPage() {
       review_status: reviewStatus,
       note: noteById[flag.id] || undefined,
     });
-    await Promise.all([query.refetch(), summary.refetch(), allTypes.refetch()]);
-  }, [allTypes, noteById, query, summary]);
+    await Promise.all([query.refetch(), summary.refetch(), allTypes.refetch(), prioritized.refetch()]);
+  }, [allTypes, noteById, prioritized, query, summary]);
+
+  const runScore = useCallback(async () => {
+    if (!clientId) return;
+    await api.post('/hybrid-audit/score', { client_id: clientId, async_run: true });
+    await Promise.all([query.refetch(), summary.refetch(), haeStatus.refetch()]);
+  }, [clientId, haeStatus, query, summary]);
 
   const columns = useMemo<ColDef<Flag>[]>(() => [
     { field: 'flag_type', headerName: 'Type', minWidth: 150 },
@@ -86,6 +120,11 @@ export default function AnomaliesPage() {
       cellClassRules: { 'text-red-700 font-semibold': p => Number(p.value || 0) >= 0.7 },
     },
     {
+      headerName: 'HAE Drivers',
+      minWidth: 220,
+      valueGetter: p => formatDrivers(p.data?.drivers),
+    },
+    {
       field: 'review_status',
       headerName: 'Review',
       minWidth: 140,
@@ -94,7 +133,7 @@ export default function AnomaliesPage() {
     { headerName: 'Vendor', minWidth: 180, valueGetter: p => p.data?.transaction?.vendor_name || '-' },
     { headerName: 'Invoice', minWidth: 140, valueGetter: p => p.data?.transaction?.invoice_no || '-' },
     { headerName: 'Amount', minWidth: 120, valueGetter: p => p.data?.transaction?.amount ?? '-', valueFormatter: p => typeof p.value === 'number' ? p.value.toLocaleString('en-IN') : String(p.value) },
-    { field: 'details', headerName: 'Details', minWidth: 260, valueFormatter: p => JSON.stringify(p.value || {}) },
+    { field: 'details', headerName: 'Details', minWidth: 220, valueFormatter: p => JSON.stringify(p.value || {}) },
     {
       headerName: 'Decision',
       minWidth: 430,
@@ -116,12 +155,33 @@ export default function AnomaliesPage() {
   ], [noteById, review]);
 
   return <div className="space-y-5">
-    <PageHeader title="Anomaly Dashboard" subtitle="Isolation Forest, Benford, transaction-rule, and vendor-spike risk signals." />
+    <PageHeader title="Anomaly Dashboard" subtitle="HAE-5 human-auditor precision: assertion tests (cut-off, completeness, existence, JE, three-way), ML fusion, and LinUCB sampling." />
     <div className="grid gap-3 md:grid-cols-4">
       {STATUSES.map(item => <button key={item} onClick={() => setStatus(item)} className={`rounded-xl border p-4 text-left ${status === item ? 'border-gray-900 bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>
         <p className="text-xs opacity-70">{item.replaceAll('_', ' ')}</p>
         <p className="mt-1 text-2xl font-semibold">{summary.data?.[item as keyof Summary] && typeof summary.data[item as keyof Summary] === 'object' ? (summary.data[item as keyof Summary] as SummaryBucket).count : 0}</p>
       </button>)}
+    </div>
+    <div className="rounded-xl border bg-white p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-gray-500">HAE priority queue</p>
+          <p className="text-sm text-gray-700">LinUCB ranks open flags for reviewer attention. Engine: {haeStatus.data?.engine || 'HAE-4'} · scored txns: {haeStatus.data?.scored_transactions ?? '—'}</p>
+        </div>
+        <button disabled={!clientId} onClick={runScore} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white disabled:opacity-50">Run HAE score</button>
+      </div>
+      <div className="mt-3 grid gap-2 md:grid-cols-2">
+        {(prioritized.data?.items || []).slice(0, 6).map(item => (
+          <div key={item.id} className="rounded-lg border px-3 py-2 text-xs">
+            <div className="flex justify-between gap-2">
+              <span className="font-medium">{item.flag_type || 'flag'}</span>
+              <span>{Math.round(Number(item.priority_score || 0) * 100)}% priority · {item.bandit_arm_label}</span>
+            </div>
+            <p className="mt-1 text-gray-600">{formatDrivers(item.drivers)}</p>
+          </div>
+        ))}
+        {!prioritized.data?.items?.length && <p className="text-xs text-gray-500">No open flags to prioritize yet.</p>}
+      </div>
     </div>
     <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-white p-3">
       <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search client, vendor, invoice, type" className="min-w-64 rounded-lg border px-3 py-2 text-sm" />

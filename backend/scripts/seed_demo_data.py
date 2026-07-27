@@ -32,8 +32,8 @@ from app.engines.automation_engines import (
 )
 from app.engines.autopilot_engine import refresh_autopilot_exceptions
 
-DEMO_EMAIL = "demo@cacopilot.in"
-DEMO_PASSWORD = "DemoPass@2026"
+DEMO_EMAIL = "demo@cacopilot.example.com"
+DEMO_PASSWORD = "DemoPass123"
 DEMO_RATIOS = {
     "current_ratio": 1.72,
     "debt_equity_ratio": 1.05,
@@ -431,7 +431,7 @@ def main():
         seed_peer_pool(db)
         refresh_autopilot_exceptions(db, str(org.id))
         db.commit()
-        print("Demo data ready for demo@cacopilot.in")
+        print("Demo data ready for demo@cacopilot.example.com")
     finally:
         db.close()
 
