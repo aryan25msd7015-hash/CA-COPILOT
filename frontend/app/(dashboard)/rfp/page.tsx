@@ -2,83 +2,195 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { ColDef, ICellRendererParams } from 'ag-grid-community';
+import type { ColDef } from 'ag-grid-community';
 import { api } from '@/lib/api';
 import { downloadFromApi } from '@/lib/download';
 import DataGrid from '@/components/shared/DataGrid';
 import PageHeader from '@/components/shared/PageHeader';
-import StatusBadge from '@/components/shared/StatusBadge';
 
-interface Bid { id: string; title: string; eligibility: { overall_eligible: boolean; criteria: unknown[]; disqualifying_gaps: string[] }; proposal_text?: string; status: string; created_at: string; criteria_count: number; passed_count: number; gap_count: number; eligibility_score: number; proposal_ready: boolean; rfp_excerpt: string; }
-interface Overview { total_bids: number; generated: number; ineligible: number; approved: number; rejected: number; proposal_ready: number; average_score: number; credential_health: { score: number; missing: string[] }; }
-const initialCredentials = {
-  firm_name: '', icai_regn_no: '', founding_year: 2010, hq_city: '', hq_state: '',
-  partners: '[{"name":"Aarav Mehta","membership_no":"123456","experience_years":18,"specializations":["Statutory Audit"]}]',
-  article_clerks: 10, total_staff: 25, gross_fee_receipts_fy1: 12000000, gross_fee_receipts_fy2: 10500000, gross_fee_receipts_fy3: 9000000,
-  industries_served: '[{"industry":"Manufacturing","client_count":12,"years":10}]',
-  key_engagements: '[{"name":"Manufacturing statutory audit"}]', peer_review_status: 'valid', quality_review_date: '',
+interface Bid {
+  id: string;
+  title: string;
+  eligibility?: {
+    overall_eligible?: boolean;
+    criteria?: unknown[];
+    disqualifying_gaps?: string[];
+  };
+  proposal_text?: string;
+  status: string;
+  created_at: string;
+  criteria_count: number;
+  passed_count: number;
+  gap_count: number;
+  eligibility_score: number;
+  proposal_ready: boolean;
+  rfp_excerpt: string;
+}
+
+interface Overview {
+  total_bids: number;
+  generated: number;
+  ineligible: number;
+  approved: number;
+  rejected: number;
+  proposal_ready: number;
+  average_score: number;
+  credential_health?: { score?: number; missing?: string[] | unknown };
+}
+
+type CredentialForm = {
+  firm_name: string;
+  icai_regn_no: string;
+  founding_year: string;
+  hq_city: string;
+  hq_state: string;
+  partners: string;
+  article_clerks: string;
+  total_staff: string;
+  gross_fee_receipts_fy1: string;
+  gross_fee_receipts_fy2: string;
+  gross_fee_receipts_fy3: string;
+  industries_served: string;
+  key_engagements: string;
+  peer_review_status: string;
+  quality_review_date: string;
 };
 
+const initialCredentials: CredentialForm = {
+  firm_name: '',
+  icai_regn_no: '',
+  founding_year: '2010',
+  hq_city: '',
+  hq_state: '',
+  partners: '[{"name":"Aarav Mehta","membership_no":"123456","experience_years":18,"specializations":["Statutory Audit"]}]',
+  article_clerks: '10',
+  total_staff: '25',
+  gross_fee_receipts_fy1: '12000000',
+  gross_fee_receipts_fy2: '10500000',
+  gross_fee_receipts_fy3: '9000000',
+  industries_served: '[{"industry":"Manufacturing","client_count":12,"years":10}]',
+  key_engagements: '[{"name":"Manufacturing statutory audit"}]',
+  peer_review_status: 'valid',
+  quality_review_date: '',
+};
+
+function asJsonText(value: unknown, fallback: string) {
+  if (typeof value === 'string' && value.trim()) return value;
+  try {
+    return JSON.stringify(value ?? JSON.parse(fallback), null, 2);
+  } catch {
+    return fallback;
+  }
+}
+
+function missingList(value: unknown): string[] {
+  return Array.isArray(value) ? value.map(String) : [];
+}
+
 export default function RfpPage() {
-  const [credentials, setCredentials] = useState(initialCredentials);
+  const [credentials, setCredentials] = useState<CredentialForm>(initialCredentials);
   const [title, setTitle] = useState('');
   const [rfpText, setRfpText] = useState('');
   const [preview, setPreview] = useState('');
   const [message, setMessage] = useState('');
-  const saved = useQuery<Record<string, unknown> | null>({ queryKey: ['rfp-credentials'], queryFn: () => api.get('/rfp/credentials').then(r => r.data) });
-  const bids = useQuery<Bid[]>({ queryKey: ['rfp-bids'], queryFn: () => api.get('/rfp/bids').then(r => r.data) });
-  const overview = useQuery<Overview>({ queryKey: ['rfp-overview'], queryFn: () => api.get('/rfp/overview').then(r => r.data) });
+  const [selectedBidId, setSelectedBidId] = useState('');
+
+  const saved = useQuery<Record<string, unknown> | null>({
+    queryKey: ['rfp-credentials'],
+    queryFn: () => api.get('/rfp/credentials').then((r) => r.data),
+  });
+  const bids = useQuery<Bid[]>({
+    queryKey: ['rfp-bids'],
+    queryFn: () => api.get('/rfp/bids').then((r) => (Array.isArray(r.data) ? r.data : [])),
+  });
+  const overview = useQuery<Overview>({
+    queryKey: ['rfp-overview'],
+    queryFn: () => api.get('/rfp/overview').then((r) => r.data),
+  });
+
   useEffect(() => {
     const data = saved.data;
     if (!data || typeof data !== 'object') return;
-    const asJson = (value: unknown, fallback: string) => {
-      if (typeof value === 'string' && value.trim()) return value;
-      try {
-        return JSON.stringify(value ?? JSON.parse(fallback), null, 2);
-      } catch {
-        return fallback;
-      }
-    };
-    setCredentials((current) => ({
-      ...current,
-      firm_name: String(data.firm_name ?? current.firm_name ?? ''),
-      icai_regn_no: String(data.icai_regn_no ?? current.icai_regn_no ?? ''),
-      founding_year: Number(data.founding_year ?? current.founding_year ?? 2010),
-      hq_city: String(data.hq_city ?? current.hq_city ?? ''),
-      hq_state: String(data.hq_state ?? current.hq_state ?? ''),
-      article_clerks: Number(data.article_clerks ?? current.article_clerks ?? 0),
-      total_staff: Number(data.total_staff ?? current.total_staff ?? 0),
-      gross_fee_receipts_fy1: Number(data.gross_fee_receipts_fy1 ?? current.gross_fee_receipts_fy1 ?? 0),
-      gross_fee_receipts_fy2: Number(data.gross_fee_receipts_fy2 ?? current.gross_fee_receipts_fy2 ?? 0),
-      gross_fee_receipts_fy3: Number(data.gross_fee_receipts_fy3 ?? current.gross_fee_receipts_fy3 ?? 0),
-      peer_review_status: String(data.peer_review_status ?? current.peer_review_status ?? 'valid'),
-      partners: asJson(data.partners, current.partners),
-      industries_served: asJson(data.industries_served, current.industries_served),
-      key_engagements: asJson(data.key_engagements, current.key_engagements),
+    setCredentials({
+      firm_name: String(data.firm_name ?? ''),
+      icai_regn_no: String(data.icai_regn_no ?? ''),
+      founding_year: String(data.founding_year ?? '2010'),
+      hq_city: String(data.hq_city ?? ''),
+      hq_state: String(data.hq_state ?? ''),
+      article_clerks: String(data.article_clerks ?? '0'),
+      total_staff: String(data.total_staff ?? '0'),
+      gross_fee_receipts_fy1: String(data.gross_fee_receipts_fy1 ?? '0'),
+      gross_fee_receipts_fy2: String(data.gross_fee_receipts_fy2 ?? '0'),
+      gross_fee_receipts_fy3: String(data.gross_fee_receipts_fy3 ?? '0'),
+      peer_review_status: String(data.peer_review_status ?? 'valid'),
+      partners: asJsonText(data.partners, initialCredentials.partners),
+      industries_served: asJsonText(data.industries_served, initialCredentials.industries_served),
+      key_engagements: asJsonText(data.key_engagements, initialCredentials.key_engagements),
       quality_review_date: String(data.quality_review_date || ''),
-    }));
+    });
   }, [saved.data]);
+
   async function saveCredentials() {
-    await api.put('/rfp/credentials', { ...credentials, founding_year: Number(credentials.founding_year), article_clerks: Number(credentials.article_clerks), total_staff: Number(credentials.total_staff), gross_fee_receipts_fy1: Number(credentials.gross_fee_receipts_fy1), gross_fee_receipts_fy2: Number(credentials.gross_fee_receipts_fy2), gross_fee_receipts_fy3: Number(credentials.gross_fee_receipts_fy3), quality_review_date: credentials.quality_review_date || null, partners: JSON.parse(credentials.partners), industries_served: JSON.parse(credentials.industries_served), key_engagements: JSON.parse(credentials.key_engagements) });
+    await api.put('/rfp/credentials', {
+      ...credentials,
+      founding_year: Number(credentials.founding_year),
+      article_clerks: Number(credentials.article_clerks),
+      total_staff: Number(credentials.total_staff),
+      gross_fee_receipts_fy1: Number(credentials.gross_fee_receipts_fy1),
+      gross_fee_receipts_fy2: Number(credentials.gross_fee_receipts_fy2),
+      gross_fee_receipts_fy3: Number(credentials.gross_fee_receipts_fy3),
+      quality_review_date: credentials.quality_review_date || null,
+      partners: JSON.parse(credentials.partners),
+      industries_served: JSON.parse(credentials.industries_served),
+      key_engagements: JSON.parse(credentials.key_engagements),
+    });
     await Promise.all([saved.refetch(), overview.refetch()]);
     setMessage('Reusable firm credential profile saved.');
   }
+
   async function analyze() {
     const response = await api.post('/rfp/bids', { title, rfp_text: rfpText });
-    setPreview(`ELIGIBILITY CHECK\n${JSON.stringify(response.data.eligibility, null, 2)}\n\n${response.data.proposal_text || 'No proposal generated because one or more eligibility criteria failed.'}`);
-    await Promise.all([bids.refetch(), overview.refetch()]); setMessage(`RFP analysis complete: ${response.data.status}; score ${response.data.eligibility_score}%.`);
-  }
-  const setBidStatus = useCallback(async (row: Bid, status: string) => {
-    const response = await api.patch(`/rfp/bids/${row.id}`, { status });
-    setMessage(`${row.title} marked ${response.data.status}.`);
+    setPreview(
+      `ELIGIBILITY CHECK\n${JSON.stringify(response.data.eligibility, null, 2)}\n\n${
+        response.data.proposal_text ||
+        'No proposal generated because one or more eligibility criteria failed.'
+      }`,
+    );
     await Promise.all([bids.refetch(), overview.refetch()]);
-  }, [bids, overview]);
-  const columns = useMemo<ColDef<Bid>[]>(() => [
-    { field: 'title', headerName: 'RFP', minWidth: 220 }, { field: 'status', headerName: 'Status', cellRenderer: (p: ICellRendererParams<Bid>) => <StatusBadge value={p.value} /> },
-    { field: 'eligibility_score', headerName: 'Score', valueFormatter: p => `${Number(p.value || 0).toFixed(1)}%` },
-    { field: 'criteria_count', headerName: 'Criteria' }, { field: 'gap_count', headerName: 'Gaps' },
-    { field: 'created_at', headerName: 'Created' }, { headerName: 'Actions', minWidth: 260, sortable: false, filter: false, cellRenderer: (p: ICellRendererParams<Bid>) => <div className="flex h-full items-center gap-3"><button onClick={() => p.data && setPreview(`ELIGIBILITY CHECK\nScore: ${p.data.eligibility_score}%\n${JSON.stringify(p.data.eligibility, null, 2)}\n\n${p.data.proposal_text || 'No proposal generated because one or more eligibility criteria failed.'}`)} className="text-xs text-blue-700">Preview</button>{p.data?.proposal_text && <button onClick={() => p.data && setBidStatus(p.data, 'approved')} className="text-xs text-gray-900">Approve</button>}<button onClick={() => p.data && setBidStatus(p.data, 'rejected')} className="text-xs text-red-700">Reject</button>{p.data?.proposal_text && <button onClick={() => p.data && downloadFromApi(`/rfp/bids/${p.data.id}/export`, `technical-bid-${p.data.id}.docx`)} className="text-xs text-green-700">DOCX</button>}</div> },
-  ], [setBidStatus]);
+    setMessage(`RFP analysis complete: ${response.data.status}; score ${response.data.eligibility_score}%.`);
+  }
+
+  const setBidStatus = useCallback(
+    async (row: Bid, status: string) => {
+      const response = await api.patch(`/rfp/bids/${row.id}`, { status });
+      setMessage(`${row.title} marked ${response.data.status}.`);
+      await Promise.all([bids.refetch(), overview.refetch()]);
+    },
+    [bids, overview],
+  );
+
+  const columns = useMemo<ColDef<Bid>[]>(
+    () => [
+      { field: 'title', headerName: 'RFP', minWidth: 220 },
+      { field: 'status', headerName: 'Status' },
+      {
+        field: 'eligibility_score',
+        headerName: 'Score',
+        valueFormatter: (p) => `${Number(p.value || 0).toFixed(1)}%`,
+      },
+      { field: 'criteria_count', headerName: 'Criteria' },
+      { field: 'gap_count', headerName: 'Gaps' },
+      { field: 'created_at', headerName: 'Created' },
+      {
+        headerName: 'Bid ID',
+        field: 'id',
+        minWidth: 180,
+        valueFormatter: (p) => String(p.value || ''),
+      },
+    ],
+    [],
+  );
+
   const metrics = [
     ['Bids', overview.data?.total_bids || 0],
     ['Generated', overview.data?.generated || 0],
@@ -89,17 +201,169 @@ export default function RfpPage() {
     ['Avg score', `${Number(overview.data?.average_score || 0).toFixed(1)}%`],
     ['Credential health', `${Number(overview.data?.credential_health?.score || 0).toFixed(1)}%`],
   ];
-  const simpleFields = ['firm_name', 'icai_regn_no', 'founding_year', 'hq_city', 'hq_state', 'article_clerks', 'total_staff', 'gross_fee_receipts_fy1', 'gross_fee_receipts_fy2', 'gross_fee_receipts_fy3', 'peer_review_status', 'quality_review_date'] as const;
-  const missingCredentials = Array.isArray(overview.data?.credential_health?.missing)
-      ? overview.data.credential_health.missing
-      : [];
-  return <div className="space-y-5">
-    <PageHeader title="Audit Bid & RFP Generator" subtitle="Check eligibility against stored credentials and generate evidence-backed technical bids." />
-    <div className="grid gap-3 sm:grid-cols-4">{metrics.map(([label, value]) => <div key={label} className="rounded-xl border bg-white p-4"><p className="text-xs text-gray-500">{label}</p><p className="mt-1 text-lg font-semibold">{value}</p></div>)}</div>
-    {missingCredentials.length > 0 && <div className="rounded-xl border bg-amber-50 p-4 text-sm text-amber-800">Credential gaps: {missingCredentials.join(', ')}</div>}
-    <div className="rounded-xl border bg-white p-4"><h2 className="mb-3 text-sm font-semibold">Firm credentials</h2><div className="grid gap-3 md:grid-cols-4">{simpleFields.map(key => <input key={key} value={String(credentials[key] ?? '')} onChange={e => setCredentials({ ...credentials, [key]: e.target.value })} placeholder={key.replaceAll('_', ' ')} className="rounded border px-3 py-2 text-sm" />)}</div><div className="mt-3 grid gap-3 lg:grid-cols-3"><textarea value={credentials.partners} onChange={e => setCredentials({ ...credentials, partners: e.target.value })} rows={6} className="rounded border p-3 font-mono text-xs" /><textarea value={credentials.industries_served} onChange={e => setCredentials({ ...credentials, industries_served: e.target.value })} rows={6} className="rounded border p-3 font-mono text-xs" /><textarea value={credentials.key_engagements} onChange={e => setCredentials({ ...credentials, key_engagements: e.target.value })} rows={6} className="rounded border p-3 font-mono text-xs" /></div><button onClick={saveCredentials} className="mt-3 rounded bg-gray-900 px-3 py-2 text-sm text-white">Save credential database</button></div>
-    <div className="grid gap-4 lg:grid-cols-[260px_1fr]"><div className="space-y-3"><input value={title} onChange={e => setTitle(e.target.value)} placeholder="RFP title" className="w-full rounded border px-3 py-2 text-sm" /><button disabled={!title || !rfpText} onClick={analyze} className="w-full rounded bg-blue-600 px-3 py-2 text-sm text-white disabled:opacity-50">Check eligibility & generate bid</button>{message && <p className="text-sm text-green-700">{message}</p>}</div><textarea value={rfpText} onChange={e => setRfpText(e.target.value)} rows={10} placeholder="Paste RFP eligibility and scope text..." className="rounded-xl border p-3 text-sm" /></div>
-    {preview && <div className="rounded-xl border bg-white p-4"><pre className="whitespace-pre-wrap text-sm">{preview}</pre></div>}
-    <DataGrid rows={bids.data || []} columns={columns} />
-  </div>;
+
+  const simpleFields: Array<keyof CredentialForm> = [
+    'firm_name',
+    'icai_regn_no',
+    'founding_year',
+    'hq_city',
+    'hq_state',
+    'article_clerks',
+    'total_staff',
+    'gross_fee_receipts_fy1',
+    'gross_fee_receipts_fy2',
+    'gross_fee_receipts_fy3',
+    'peer_review_status',
+    'quality_review_date',
+  ];
+
+  const gaps = missingList(overview.data?.credential_health?.missing);
+  const bidRows = Array.isArray(bids.data) ? bids.data : [];
+  const selectedBid = bidRows.find((row) => row.id === selectedBidId) || bidRows[0];
+
+  return (
+    <div className="space-y-5">
+      <PageHeader
+        title="Audit Bid & RFP Generator"
+        subtitle="Check eligibility against stored credentials and generate evidence-backed technical bids."
+      />
+      <div className="grid gap-3 sm:grid-cols-4">
+        {metrics.map(([label, value]) => (
+          <div key={String(label)} className="rounded-xl border bg-white p-4">
+            <p className="text-xs text-gray-500">{label}</p>
+            <p className="mt-1 text-lg font-semibold">{value}</p>
+          </div>
+        ))}
+      </div>
+      {gaps.length > 0 && (
+        <div className="rounded-xl border bg-amber-50 p-4 text-sm text-amber-800">
+          Credential gaps: {gaps.join(', ')}
+        </div>
+      )}
+      <div className="rounded-xl border bg-white p-4">
+        <h2 className="mb-3 text-sm font-semibold">Firm credentials</h2>
+        <div className="grid gap-3 md:grid-cols-4">
+          {simpleFields.map((key) => (
+            <input
+              key={key}
+              value={credentials[key]}
+              onChange={(e) => setCredentials({ ...credentials, [key]: e.target.value })}
+              placeholder={key.replaceAll('_', ' ')}
+              className="rounded border px-3 py-2 text-sm"
+            />
+          ))}
+        </div>
+        <div className="mt-3 grid gap-3 lg:grid-cols-3">
+          <textarea
+            value={credentials.partners}
+            onChange={(e) => setCredentials({ ...credentials, partners: e.target.value })}
+            rows={6}
+            className="rounded border p-3 font-mono text-xs"
+          />
+          <textarea
+            value={credentials.industries_served}
+            onChange={(e) => setCredentials({ ...credentials, industries_served: e.target.value })}
+            rows={6}
+            className="rounded border p-3 font-mono text-xs"
+          />
+          <textarea
+            value={credentials.key_engagements}
+            onChange={(e) => setCredentials({ ...credentials, key_engagements: e.target.value })}
+            rows={6}
+            className="rounded border p-3 font-mono text-xs"
+          />
+        </div>
+        <button onClick={saveCredentials} className="mt-3 rounded bg-gray-900 px-3 py-2 text-sm text-white">
+          Save credential database
+        </button>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
+        <div className="space-y-3">
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="RFP title"
+            className="w-full rounded border px-3 py-2 text-sm"
+          />
+          <button
+            disabled={!title || !rfpText}
+            onClick={analyze}
+            className="w-full rounded bg-blue-600 px-3 py-2 text-sm text-white disabled:opacity-50"
+          >
+            Check eligibility & generate bid
+          </button>
+          {message && <p className="text-sm text-green-700">{message}</p>}
+        </div>
+        <textarea
+          value={rfpText}
+          onChange={(e) => setRfpText(e.target.value)}
+          rows={10}
+          placeholder="Paste RFP eligibility and scope text..."
+          className="rounded-xl border p-3 text-sm"
+        />
+      </div>
+      {preview && (
+        <div className="rounded-xl border bg-white p-4">
+          <pre className="whitespace-pre-wrap text-sm">{preview}</pre>
+        </div>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <select
+          value={selectedBid?.id || ''}
+          onChange={(e) => setSelectedBidId(e.target.value)}
+          className="rounded border px-3 py-2 text-sm"
+        >
+          {bidRows.map((row) => (
+            <option key={row.id} value={row.id}>
+              {row.title}
+            </option>
+          ))}
+        </select>
+        <button
+          disabled={!selectedBid}
+          onClick={() =>
+            selectedBid &&
+            setPreview(
+              `ELIGIBILITY CHECK\nScore: ${selectedBid.eligibility_score}%\n${JSON.stringify(
+                selectedBid.eligibility,
+                null,
+                2,
+              )}\n\n${
+                selectedBid.proposal_text ||
+                'No proposal generated because one or more eligibility criteria failed.'
+              }`,
+            )
+          }
+          className="rounded border px-3 py-2 text-xs text-blue-700 disabled:opacity-50"
+        >
+          Preview
+        </button>
+        <button
+          disabled={!selectedBid?.proposal_text}
+          onClick={() => selectedBid && setBidStatus(selectedBid, 'approved')}
+          className="rounded border px-3 py-2 text-xs disabled:opacity-50"
+        >
+          Approve
+        </button>
+        <button
+          disabled={!selectedBid}
+          onClick={() => selectedBid && setBidStatus(selectedBid, 'rejected')}
+          className="rounded border px-3 py-2 text-xs text-red-700 disabled:opacity-50"
+        >
+          Reject
+        </button>
+        <button
+          disabled={!selectedBid?.proposal_text}
+          onClick={() =>
+            selectedBid &&
+            downloadFromApi(`/rfp/bids/${selectedBid.id}/export`, `technical-bid-${selectedBid.id}.docx`)
+          }
+          className="rounded border px-3 py-2 text-xs text-green-700 disabled:opacity-50"
+        >
+          DOCX
+        </button>
+      </div>
+      <DataGrid rows={bidRows} columns={columns} />
+    </div>
+  );
 }
