@@ -30,13 +30,31 @@ export default function RfpPage() {
   const overview = useQuery<Overview>({ queryKey: ['rfp-overview'], queryFn: () => api.get('/rfp/overview').then(r => r.data) });
   useEffect(() => {
     const data = saved.data;
-    if (!data) return;
-    setCredentials(current => ({
+    if (!data || typeof data !== 'object') return;
+    const asJson = (value: unknown, fallback: string) => {
+      if (typeof value === 'string' && value.trim()) return value;
+      try {
+        return JSON.stringify(value ?? JSON.parse(fallback), null, 2);
+      } catch {
+        return fallback;
+      }
+    };
+    setCredentials((current) => ({
       ...current,
-      ...(data as Partial<typeof initialCredentials>),
-      partners: JSON.stringify(data.partners || [], null, 2),
-      industries_served: JSON.stringify(data.industries_served || [], null, 2),
-      key_engagements: JSON.stringify(data.key_engagements || [], null, 2),
+      firm_name: String(data.firm_name ?? current.firm_name ?? ''),
+      icai_regn_no: String(data.icai_regn_no ?? current.icai_regn_no ?? ''),
+      founding_year: Number(data.founding_year ?? current.founding_year ?? 2010),
+      hq_city: String(data.hq_city ?? current.hq_city ?? ''),
+      hq_state: String(data.hq_state ?? current.hq_state ?? ''),
+      article_clerks: Number(data.article_clerks ?? current.article_clerks ?? 0),
+      total_staff: Number(data.total_staff ?? current.total_staff ?? 0),
+      gross_fee_receipts_fy1: Number(data.gross_fee_receipts_fy1 ?? current.gross_fee_receipts_fy1 ?? 0),
+      gross_fee_receipts_fy2: Number(data.gross_fee_receipts_fy2 ?? current.gross_fee_receipts_fy2 ?? 0),
+      gross_fee_receipts_fy3: Number(data.gross_fee_receipts_fy3 ?? current.gross_fee_receipts_fy3 ?? 0),
+      peer_review_status: String(data.peer_review_status ?? current.peer_review_status ?? 'valid'),
+      partners: asJson(data.partners, current.partners),
+      industries_served: asJson(data.industries_served, current.industries_served),
+      key_engagements: asJson(data.key_engagements, current.key_engagements),
       quality_review_date: String(data.quality_review_date || ''),
     }));
   }, [saved.data]);
@@ -72,11 +90,14 @@ export default function RfpPage() {
     ['Credential health', `${Number(overview.data?.credential_health?.score || 0).toFixed(1)}%`],
   ];
   const simpleFields = ['firm_name', 'icai_regn_no', 'founding_year', 'hq_city', 'hq_state', 'article_clerks', 'total_staff', 'gross_fee_receipts_fy1', 'gross_fee_receipts_fy2', 'gross_fee_receipts_fy3', 'peer_review_status', 'quality_review_date'] as const;
+  const missingCredentials = Array.isArray(overview.data?.credential_health?.missing)
+      ? overview.data.credential_health.missing
+      : [];
   return <div className="space-y-5">
     <PageHeader title="Audit Bid & RFP Generator" subtitle="Check eligibility against stored credentials and generate evidence-backed technical bids." />
     <div className="grid gap-3 sm:grid-cols-4">{metrics.map(([label, value]) => <div key={label} className="rounded-xl border bg-white p-4"><p className="text-xs text-gray-500">{label}</p><p className="mt-1 text-lg font-semibold">{value}</p></div>)}</div>
-    {!!overview.data?.credential_health?.missing?.length && <div className="rounded-xl border bg-amber-50 p-4 text-sm text-amber-800">Credential gaps: {overview.data.credential_health.missing.join(', ')}</div>}
-    <div className="rounded-xl border bg-white p-4"><h2 className="mb-3 text-sm font-semibold">Firm credentials</h2><div className="grid gap-3 md:grid-cols-4">{simpleFields.map(key => <input key={key} value={credentials[key]} onChange={e => setCredentials({ ...credentials, [key]: e.target.value })} placeholder={key.replaceAll('_', ' ')} className="rounded border px-3 py-2 text-sm" />)}</div><div className="mt-3 grid gap-3 lg:grid-cols-3"><textarea value={credentials.partners} onChange={e => setCredentials({ ...credentials, partners: e.target.value })} rows={6} className="rounded border p-3 font-mono text-xs" /><textarea value={credentials.industries_served} onChange={e => setCredentials({ ...credentials, industries_served: e.target.value })} rows={6} className="rounded border p-3 font-mono text-xs" /><textarea value={credentials.key_engagements} onChange={e => setCredentials({ ...credentials, key_engagements: e.target.value })} rows={6} className="rounded border p-3 font-mono text-xs" /></div><button onClick={saveCredentials} className="mt-3 rounded bg-gray-900 px-3 py-2 text-sm text-white">Save credential database</button></div>
+    {missingCredentials.length > 0 && <div className="rounded-xl border bg-amber-50 p-4 text-sm text-amber-800">Credential gaps: {missingCredentials.join(', ')}</div>}
+    <div className="rounded-xl border bg-white p-4"><h2 className="mb-3 text-sm font-semibold">Firm credentials</h2><div className="grid gap-3 md:grid-cols-4">{simpleFields.map(key => <input key={key} value={String(credentials[key] ?? '')} onChange={e => setCredentials({ ...credentials, [key]: e.target.value })} placeholder={key.replaceAll('_', ' ')} className="rounded border px-3 py-2 text-sm" />)}</div><div className="mt-3 grid gap-3 lg:grid-cols-3"><textarea value={credentials.partners} onChange={e => setCredentials({ ...credentials, partners: e.target.value })} rows={6} className="rounded border p-3 font-mono text-xs" /><textarea value={credentials.industries_served} onChange={e => setCredentials({ ...credentials, industries_served: e.target.value })} rows={6} className="rounded border p-3 font-mono text-xs" /><textarea value={credentials.key_engagements} onChange={e => setCredentials({ ...credentials, key_engagements: e.target.value })} rows={6} className="rounded border p-3 font-mono text-xs" /></div><button onClick={saveCredentials} className="mt-3 rounded bg-gray-900 px-3 py-2 text-sm text-white">Save credential database</button></div>
     <div className="grid gap-4 lg:grid-cols-[260px_1fr]"><div className="space-y-3"><input value={title} onChange={e => setTitle(e.target.value)} placeholder="RFP title" className="w-full rounded border px-3 py-2 text-sm" /><button disabled={!title || !rfpText} onClick={analyze} className="w-full rounded bg-blue-600 px-3 py-2 text-sm text-white disabled:opacity-50">Check eligibility & generate bid</button>{message && <p className="text-sm text-green-700">{message}</p>}</div><textarea value={rfpText} onChange={e => setRfpText(e.target.value)} rows={10} placeholder="Paste RFP eligibility and scope text..." className="rounded-xl border p-3 text-sm" /></div>
     {preview && <div className="rounded-xl border bg-white p-4"><pre className="whitespace-pre-wrap text-sm">{preview}</pre></div>}
     <DataGrid rows={bids.data || []} columns={columns} />
