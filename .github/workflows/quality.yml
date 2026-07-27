@@ -100,6 +100,13 @@ jobs:
         run: docker compose up -d postgres redis backend frontend
       - name: Prepare demo database
         run: |
+          # Backend entrypoint already migrates on start; wait for head, then seed.
+          for i in $(seq 1 60); do
+            if docker compose exec -T backend sh -c "alembic current 2>/dev/null | grep -q '(head)'"; then
+              break
+            fi
+            sleep 2
+          done
           docker compose exec -T backend alembic upgrade head
           docker compose exec -T backend python scripts/seed_demo_data.py
       - name: Run browser regression
