@@ -1025,7 +1025,7 @@ def _vault_item_out(row, clients=None, users=None):
 
 
 @router.get("/vault/overview")
-def vault_overview(request: Request, db: Session = Depends(get_db), _=Depends(require_role(["partner", "manager"]))):
+def vault_overview(request: Request, db: Session = Depends(get_db), _=Depends(require_role(["partner"]))):
     today = date.today()
     rows = scoped(db, CredentialVaultItem, request.state.org_id).all()
     by_type: dict[str, int] = {}
@@ -1057,7 +1057,7 @@ def vault_items(
     skip: int = 0,
     limit: int = 200,
     db: Session = Depends(get_db),
-    _=Depends(require_role(["partner", "manager"])),
+    _=Depends(require_role(["partner"])),
 ):
     skip, limit = _page(skip, limit)
     query = scoped(db, CredentialVaultItem, request.state.org_id)
@@ -1079,7 +1079,7 @@ def vault_items(
 
 
 @router.post("/vault/items", status_code=201)
-def create_vault_item(payload: VaultItemRequest, request: Request, db: Session = Depends(get_db), user=Depends(require_role(["partner", "manager"]))):
+def create_vault_item(payload: VaultItemRequest, request: Request, db: Session = Depends(get_db), user=Depends(require_role(["partner"]))):
     if payload.client_id:
         _client(db, request.state.org_id, payload.client_id)
     if payload.owner_user_id:
@@ -1096,7 +1096,7 @@ def create_vault_item(payload: VaultItemRequest, request: Request, db: Session =
 
 
 @router.patch("/vault/items/{item_id}")
-def update_vault_item(item_id: str, payload: VaultItemUpdate, request: Request, db: Session = Depends(get_db), _=Depends(require_role(["partner", "manager"]))):
+def update_vault_item(item_id: str, payload: VaultItemUpdate, request: Request, db: Session = Depends(get_db), _=Depends(require_role(["partner"]))):
     row = scoped(db, CredentialVaultItem, request.state.org_id).filter(CredentialVaultItem.id == item_id).first()
     if not row:
         raise HTTPException(404, "Vault item not found")

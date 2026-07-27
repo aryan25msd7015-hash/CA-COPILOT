@@ -20,6 +20,10 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       if (typeof window !== 'undefined') {
+        // Do not hijack client-portal sessions into firm login.
+        if (window.location.pathname.startsWith('/client-portal')) {
+          return Promise.reject(error);
+        }
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         window.location.href = '/login';

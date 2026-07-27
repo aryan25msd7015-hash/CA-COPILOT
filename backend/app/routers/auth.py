@@ -29,34 +29,16 @@ from app.services.email_service import (
 from app.utils.jwt_utils import create_access_token
 from app.utils.events import publish_event
 
+from app.utils.permissions import permissions_for_role
+
 router = APIRouter()
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 MAX_ACTIVE_SESSIONS_PER_USER = 5
 
 ROLE_PERMISSIONS = {
-    "partner": [
-        "org:manage",
-        "team:manage",
-        "client:write",
-        "document:write",
-        "reconciliation:run",
-        "billing:manage",
-        "audit:export",
-        "assistant:ask",
-    ],
-    "manager": [
-        "client:write",
-        "document:write",
-        "reconciliation:run",
-        "audit:export",
-        "assistant:ask",
-    ],
-    "article": [
-        "client:read",
-        "document:upload",
-        "deadline:read",
-        "assistant:ask",
-    ],
+    "partner": permissions_for_role("partner"),
+    "manager": permissions_for_role("manager"),
+    "article": permissions_for_role("article"),
 }
 
 

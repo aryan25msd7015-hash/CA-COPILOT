@@ -1,8 +1,10 @@
 import { Role } from '@/types';
+import { FEATURE_ROLES } from '@/lib/permissions';
 
 export interface NavItem {
   href: string;
   label: string;
+  feature: string;
   roles: Role[];
   keywords?: string[];
 }
@@ -12,63 +14,84 @@ export interface NavGroup {
   items: NavItem[];
 }
 
+function item(href: string, label: string, feature: string, keywords: string[] = []): NavItem {
+  return {
+    href,
+    label,
+    feature,
+    roles: FEATURE_ROLES[feature] || [],
+    keywords,
+  };
+}
+
 export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Command',
     items: [
-      { href: '/', label: 'Command Center', roles: ['partner', 'manager', 'article'], keywords: ['dashboard', 'home', 'overview'] },
-      { href: '/autopilot', label: 'Exception Autopilot', roles: ['partner', 'manager'], keywords: ['review', 'exceptions', 'inbox'] },
-      { href: '/query', label: 'Ask CA Copilot', roles: ['partner', 'manager', 'article'], keywords: ['search', 'nl query', 'ask'] },
+      item('/', 'Command Center', 'command_center', ['dashboard', 'home', 'overview']),
+      item('/autopilot', 'Exception Autopilot', 'exception_autopilot', ['review', 'exceptions', 'inbox']),
+      item('/query', 'Ask CA Copilot', 'ask_ca_copilot', ['search', 'nl query', 'ask']),
     ],
   },
   {
     title: 'Practice',
     items: [
-      { href: '/clients', label: 'Clients & CRM', roles: ['partner', 'manager', 'article'], keywords: ['crm', 'client master'] },
-      { href: '/work', label: 'Work & Daybook', roles: ['partner', 'manager', 'article'], keywords: ['tasks', 'jobs', 'daybook'] },
-      { href: '/documents', label: 'Document Vault', roles: ['partner', 'manager', 'article'], keywords: ['files', 'ocr', 'vault'] },
-      { href: '/deadlines', label: 'Compliance Calendar', roles: ['partner', 'manager', 'article'], keywords: ['due dates', 'calendar'] },
-      { href: '/whatsapp', label: 'WhatsApp Desk', roles: ['partner', 'manager'], keywords: ['messages', 'reminders'] },
-      { href: '/portal', label: 'Client Portal', roles: ['partner', 'manager'], keywords: ['requests', 'approvals'] },
-      { href: '/imports', label: 'Guided Imports', roles: ['partner', 'manager', 'article'], keywords: ['tally', 'excel', 'mapping'] },
+      item('/clients', 'Clients & CRM', 'clients_crm', ['crm', 'client master']),
+      item('/work', 'Work & Daybook', 'work_daybook', ['tasks', 'jobs', 'daybook']),
+      item('/documents', 'Document Vault', 'document_vault', ['files', 'ocr', 'vault']),
+      item('/deadlines', 'Compliance Calendar', 'compliance_calendar', ['due dates', 'calendar']),
+      item('/whatsapp', 'WhatsApp Desk', 'whatsapp_desk', ['messages', 'reminders']),
+      item('/portal', 'Client Portal', 'client_portal_admin', ['requests', 'approvals']),
+      item('/imports', 'Guided Imports', 'guided_imports', ['tally', 'excel', 'mapping']),
+      item('/engagement', 'Engagement & KYC', 'engagement_kyc', ['onboarding', 'aml', 'letter']),
+      item('/litigation', 'Litigation Tracker', 'litigation_tracker', ['appeal', 'hearing', 'itat']),
     ],
   },
   {
     title: 'Delivery',
     items: [
-      { href: '/reconciliation', label: 'GST Reconciliation', roles: ['partner', 'manager', 'article'], keywords: ['gst', '2b', 'books'] },
-      { href: '/msme', label: 'MSME 43B(h)', roles: ['partner', 'manager'], keywords: ['udyam', '43bh'] },
-      { href: '/drawing-power', label: 'Drawing Power', roles: ['partner', 'manager'], keywords: ['bank', 'dp'] },
-      { href: '/certificates', label: 'CA Certificates', roles: ['partner', 'manager'], keywords: ['certification', 'docx'] },
-      { href: '/secretarial', label: 'MCA Secretarial', roles: ['partner', 'manager'], keywords: ['mca', 'minutes'] },
-      { href: '/leases', label: 'Lease Intelligence', roles: ['partner', 'manager'], keywords: ['ind as 116', 'lease'] },
+      item('/reconciliation', 'GST Reconciliation', 'gst_reconciliation', ['gst', '2b', 'books']),
+      item('/tds', 'TDS/TCS Reconciliation', 'tds_tcs_reconciliation', ['26as', 'ais', 'traces']),
+      item('/msme', 'MSME 43B(h)', 'msme_43bh', ['udyam', '43bh']),
+      item('/drawing-power', 'Drawing Power', 'drawing_power', ['bank', 'dp']),
+      item('/certificates', 'CA Certificates', 'ca_certificates', ['certification', 'docx']),
+      item('/secretarial', 'MCA Secretarial', 'mca_secretarial', ['mca', 'minutes']),
+      item('/roc-xbrl', 'ROC / XBRL Tracker', 'roc_xbrl_tracker', ['xbrl', 'roc', 'filing']),
+      item('/einvoice', 'E-Invoice / IRN', 'einvoice_irn', ['irn', 'einvoice']),
+      item('/leases', 'Lease Intelligence', 'lease_intelligence', ['ind as 116', 'lease']),
     ],
   },
   {
     title: 'Assurance',
     items: [
-      { href: '/audit', label: 'Audit Papers', roles: ['partner', 'manager'], keywords: ['working papers'] },
-      { href: '/anomalies', label: 'Anomalies', roles: ['partner', 'manager'], keywords: ['risk', 'fraud'] },
-      { href: '/invoices', label: 'Invoice Scanner', roles: ['partner', 'manager'], keywords: ['fraud scanner'] },
-      { href: '/notices', label: 'Notice Drafter', roles: ['partner', 'manager'], keywords: ['draft', 'reply'] },
+      item('/audit', 'Audit Papers', 'audit_papers', ['working papers']),
+      item('/observations', 'Query & Observations', 'query_observation_ledger', ['fieldwork', 'query']),
+      item('/checklists', 'Statutory Checklists', 'statutory_checklist', ['caro', 'companies act']),
+      item('/anomalies', 'Anomalies', 'anomalies', ['risk', 'fraud']),
+      item('/invoices', 'Invoice Scanner', 'invoice_scanner', ['fraud scanner']),
+      item('/notices', 'Notice Drafter', 'notice_drafter', ['draft', 'reply']),
     ],
   },
   {
     title: 'Office',
     items: [
-      { href: '/billing', label: 'Billing & Collections', roles: ['partner', 'manager'], keywords: ['fees', 'invoices', 'receipts'] },
-      { href: '/team', label: 'Team & Attendance', roles: ['partner', 'manager'], keywords: ['staff', 'capacity', 'hr'] },
-      { href: '/vault', label: 'DSC & Password Vault', roles: ['partner', 'manager'], keywords: ['credentials', 'dsc', 'password'] },
-      { href: '/reports', label: 'Reports & Saved Views', roles: ['partner', 'manager', 'article'], keywords: ['analytics', 'saved views'] },
-      { href: '/diagnostics', label: 'Readiness Diagnostics', roles: ['partner', 'manager'], keywords: ['security', 'integrations', 'health'] },
+      item('/billing', 'Billing & Collections', 'billing_collections', ['fees', 'invoices', 'receipts']),
+      item('/team', 'Team & Attendance', 'team_attendance', ['staff', 'capacity', 'hr']),
+      item('/vault', 'DSC & Password Vault', 'dsc_password_vault', ['credentials', 'dsc', 'password']),
+      item('/reports', 'Reports & Saved Views', 'reports_saved_views', ['analytics', 'saved views']),
+      item('/diagnostics', 'Readiness Diagnostics', 'readiness_diagnostics', ['security', 'integrations']),
+      item('/peer-review', 'Peer Review / QC', 'peer_review_qc', ['icai', 'qc']),
+      item('/knowledge', 'SOP / Knowledge Base', 'sop_knowledge_base', ['wiki', 'sop']),
     ],
   },
   {
     title: 'Growth',
     items: [
-      { href: '/benchmarking', label: 'Benchmarking', roles: ['partner'], keywords: ['peers', 'analytics'] },
-      { href: '/rfp', label: 'RFP Bids', roles: ['partner'], keywords: ['proposal', 'bid'] },
-      { href: '/timesheets', label: 'Profitability Audit', roles: ['partner'], keywords: ['timesheet', 'margin'] },
+      item('/benchmarking', 'Benchmarking', 'benchmarking', ['peers', 'analytics']),
+      item('/rfp', 'RFP Bids', 'rfp_bids', ['proposal', 'bid']),
+      item('/timesheets', 'Profitability Audit', 'profitability_audit', ['timesheet', 'margin']),
+      item('/risk-scores', 'Client Risk Scoring', 'client_risk_scoring', ['risk', 'red flag']),
+      item('/mis', 'Virtual CFO / MIS', 'virtual_cfo_mis', ['mis', 'dashboard', 'retainer']),
     ],
   },
 ];

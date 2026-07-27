@@ -808,7 +808,7 @@ def certificates(request: Request, client_id: str = "", skip: int = 0, limit: in
 
 @router.post("/certificates", status_code=201)
 def create_certificate(payload: CertificateRequest, request: Request, db: Session = Depends(get_db),
-                       user=Depends(require_role(["partner", "manager"]))):
+                       user=Depends(require_role(["partner", "manager", "article"]))):
     _client(db, request.state.org_id, payload.client_id)
     if payload.cert_type not in CERTIFICATE_TYPES:
         raise HTTPException(400, "Unsupported certificate type")
@@ -818,10 +818,12 @@ def create_certificate(payload: CertificateRequest, request: Request, db: Sessio
         raise HTTPException(422, str(exc)) from exc
     extracted.update(payload.fields)
     validation = validate_certificate_fields(extracted, payload.reference_values)
+    # Interns draft only — never land as approved.
+    initial_status = "draft" if user.role == "article" else ("ready" if validation["valid"] else "review_required")
     row = CertificateRecord(
         org_id=request.state.org_id, client_id=payload.client_id, cert_type=payload.cert_type,
         title=CERTIFICATE_TYPES[payload.cert_type][0], fields=extracted, validation=validation,
-        status="ready" if validation["valid"] else "review_required", created_by=user.id,
+        status=initial_status, created_by=user.id,
     )
     db.add(row)
     _activity(db, request, user.id, "certificate_gen", payload.client_id, 600, {"cert_type": payload.cert_type})
@@ -838,17 +840,21 @@ class CertificateUpdate(BaseModel):
 
 @router.patch("/certificates/{certificate_id}")
 def update_certificate(certificate_id: str, payload: CertificateUpdate, request: Request, db: Session = Depends(get_db),
-                       _=Depends(require_role(["partner", "manager"]))):
+                       user=Depends(require_role(["partner", "manager", "article"]))):
     row = scoped(db, CertificateRecord, request.state.org_id).filter(CertificateRecord.id == certificate_id).first()
     if not row:
         raise HTTPException(404, "Certificate not found")
     if payload.status and payload.status not in ("draft", "review_required", "ready", "approved"):
         raise HTTPException(422, "Invalid certificate status")
+    if payload.status == "approved" and user.role not in ("partner", "manager"):
+        raise HTTPException(403, "Only CA (Manager)+ can approve / sign certificates")
     fields = {**(row.fields or {}), **payload.fields}
     row.fields = fields
     row.validation = validate_certificate_fields(fields, payload.reference_values)
     if payload.status == "approved" and not row.validation["valid"]:
         raise HTTPException(422, "Certificate cannot be approved while validation issues remain")
+    if user.role == "article" and payload.status == "approved":
+        raise HTTPException(403, "Only CA (Manager)+ can approve / sign certificates")
     row.status = payload.status if payload.status in ("draft", "approved") else ("ready" if row.validation["valid"] else "review_required")
     db.commit()
     return _certificate_out(row)
