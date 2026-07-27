@@ -23,7 +23,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = "20260114_razorpay"
-down_revision = None  # ← adjust to your previous head before applying
+down_revision = "036"
 branch_labels = None
 depends_on = None
 
