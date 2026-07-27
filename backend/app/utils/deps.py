@@ -53,3 +53,30 @@ def require_role(allowed_roles: List[str]):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
         return user
     return checker
+
+
+def require_feature(feature: str):
+    """Gate an endpoint by FEATURE_ROLES catalog (module access)."""
+    from app.utils.permissions import FEATURE_ROLES, can_access_feature
+
+    allowed = list(FEATURE_ROLES.get(feature, ()))
+
+    def checker(user: User = Depends(get_current_user)):
+        if not can_access_feature(user.role, feature):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+        return user
+
+    checker.allowed_roles = allowed  # type: ignore[attr-defined]
+    return checker
+
+
+def require_action(action: str):
+    """Gate a mutation by ACTION_PERMISSIONS catalog."""
+    from app.utils.permissions import can_perform
+
+    def checker(user: User = Depends(get_current_user)):
+        if not can_perform(user.role, action):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+        return user
+
+    return checker

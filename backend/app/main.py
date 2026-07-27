@@ -15,7 +15,8 @@ from app.middleware.tenant import tenant_middleware
 from app.routers import (
     anomalies, audit_papers, auth, autopilot, benchmarking, clients, deadlines, documents, events,
     diagnostics, health_scores, hybrid_audit, integrations, invoices, notices, organizations, query, reconciliation,
-    tasks, users, whatsapp, extensions, practice_ops, razorpay as razorpay_router,
+    tasks, users, whatsapp, extensions, practice_ops, practice_gaps, client_portal,
+    razorpay as razorpay_router,
     google_auth as google_auth_router, email as email_router,
 )
 from app.services.observability import configure_observability, record_request, render_metrics
@@ -117,6 +118,8 @@ ROUTERS = [
     (tasks.router, "/tasks", "tasks"),
     (extensions.router, "", "advanced-automation"),
     (practice_ops.router, "", "practice-operations"),
+    (practice_gaps.router, "/practice-gaps", "practice-gaps"),
+    (client_portal.router, "/client-portal", "client-portal"),
     (razorpay_router.router, "/razorpay", "razorpay"),
     (google_auth_router.router, "/auth/google", "google-auth"),
     (email_router.router, "/email", "email"),

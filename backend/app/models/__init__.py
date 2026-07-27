@@ -34,6 +34,11 @@ from .practice_ops import (
     DaybookEntry, ImportJob, PaymentReceipt, PortalRequest, PracticeInvoice,
     PracticeTask, SavedView,
 )
+from .practice_gaps import (
+    AuditObservation, ClientRiskScore, EinvoiceValidation, EngagementOnboarding,
+    KnowledgeArticle, LitigationCase, MisDashboard, PeerReviewPack, PortalAuthToken,
+    RocXbrlFiling, StatutoryChecklist, TdsReconRun,
+)
 
 __all__ = [
     "Organization",
@@ -90,4 +95,16 @@ __all__ = [
     "CredentialVaultItem",
     "ImportJob",
     "SavedView",
+    "LitigationCase",
+    "EngagementOnboarding",
+    "TdsReconRun",
+    "AuditObservation",
+    "StatutoryChecklist",
+    "PeerReviewPack",
+    "KnowledgeArticle",
+    "RocXbrlFiling",
+    "EinvoiceValidation",
+    "ClientRiskScore",
+    "MisDashboard",
+    "PortalAuthToken",
 ]
