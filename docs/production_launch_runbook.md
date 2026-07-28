@@ -32,6 +32,10 @@ Minimum required values:
 - `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID`, `WHATSAPP_VERIFY_TOKEN`.
 - `AZURE_DOC_ENDPOINT`, `AZURE_DOC_KEY`.
 - `OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY`.
+- Free-tier query LLMs (recommended if paid keys are absent): `GROQ_API_KEY` (`llama-3.1-8b-instant`), `GEMINI_API_KEY` (`gemini-2.0-flash`), or `OPENROUTER_API_KEY`.
+- Optional overrides: `LLM_PROVIDER_ORDER`, `LLM_SQL_MODEL`.
+- Free-tier query LLMs (optional but recommended): `GROQ_API_KEY` (llama-3.1-8b-instant) or `GEMINI_API_KEY` (gemini-2.0-flash) or `OPENROUTER_API_KEY`.
+- Provider order override: `LLM_PROVIDER_ORDER=anthropic,openai,groq,gemini,openrouter`.
 
 ## 3. DNS And TLS
 
@@ -138,6 +142,7 @@ OCR:
 AI:
 
 - Set `ANTHROPIC_API_KEY` and/or `OPENAI_API_KEY`.
+- Or configure free-tier query providers: `GROQ_API_KEY` / `GEMINI_API_KEY` / `OPENROUTER_API_KEY`.
 - Build the legal knowledge base with `backend/scripts/build_legal_kb.py`.
 - Run a notice draft and confirm sources/citation validation are present before CA approval.
 

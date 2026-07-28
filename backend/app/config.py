@@ -32,6 +32,12 @@ class Settings(BaseSettings):
     # ── LLM providers ─────────────────────────────────────────────────────
     ANTHROPIC_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
+    # Free-tier / low-cost providers used by the NL query layer when paid keys are absent
+    GROQ_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
+    OPENROUTER_API_KEY: str = ""
+    LLM_PROVIDER_ORDER: str = "anthropic,openai,groq,gemini,openrouter"
+    LLM_SQL_MODEL: str = ""  # optional model override for SQL translation
 
     # ── WhatsApp (Meta Business API) ───────────────────────────────────────
     WHATSAPP_TOKEN: str = ""
