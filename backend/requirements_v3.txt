@@ -1,0 +1,10 @@
+# v3.0 focused dependencies
+pydantic>=2.6.4
+numpy>=1.26.0
+pandas>=2.2.0
+networkx>=3.0.0
+z3-solver>=4.15.0.0
+langgraph>=0.6.7
+stable-baselines3>=2.7.0
+gymnasium>=1.2.0
+torch>=2.8.0

@@ -24,6 +24,9 @@ export const STAFF_PLUS: Role[] = ['partner', 'manager', 'article'];
 /** Module UI access (sidebar + page shell). */
 export const FEATURE_ROLES: Record<string, Role[]> = {
   command_center: STAFF_PLUS,
+  workspace_partner: ALL_ACCESS,
+  workspace_ca: MANAGER_PLUS,
+  workspace_staff: STAFF_PLUS,
   exception_autopilot: STAFF_PLUS,
   ask_ca_copilot: STAFF_PLUS,
   clients_crm: STAFF_PLUS,
@@ -52,6 +55,7 @@ export const FEATURE_ROLES: Record<string, Role[]> = {
   statutory_checklist: STAFF_PLUS,
   logic_audit_layer1: STAFF_PLUS,
   causal_risk_layer3: STAFF_PLUS,
+  ai_audit_orchestrator: STAFF_PLUS,
   billing_collections: MANAGER_PLUS,
   team_attendance: STAFF_PLUS,
   dsc_password_vault: ALL_ACCESS,

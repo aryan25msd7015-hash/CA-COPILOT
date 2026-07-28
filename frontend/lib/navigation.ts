@@ -28,6 +28,9 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Command',
     items: [
+      item('/workspaces/partner', 'Firm Head Desk', 'workspace_partner', ['partner workspace', 'assignment']),
+      item('/workspaces/ca', 'CA Desk', 'workspace_ca', ['manager workspace', 'assigned clients']),
+      item('/workspaces/staff', 'Staff Desk', 'workspace_staff', ['article workspace', 'execution']),
       item('/', 'Command Center', 'command_center', ['dashboard', 'home', 'overview']),
       item('/autopilot', 'Exception Autopilot', 'exception_autopilot', ['review', 'exceptions', 'inbox']),
       item('/query', 'Ask CA Copilot', 'ask_ca_copilot', ['search', 'nl query', 'ask']),
@@ -72,6 +75,7 @@ export const NAV_GROUPS: NavGroup[] = [
       item('/notices', 'Notice Drafter', 'notice_drafter', ['draft', 'reply']),
       item('/logic-audit', 'Logic Audit (Layer 1)', 'logic_audit_layer1', ['rbi', 'pmla', 'z3', 'rules']),
       item('/causal-audit', 'Causal Audit (Layer 3)', 'causal_risk_layer3', ['root cause', 'forecast', 'rings']),
+      item('/audit-orchestrator', 'AI Auditor Workbench', 'ai_audit_orchestrator', ['layer4', 'approval', 'evidence']),
     ],
   },
   {

@@ -9,7 +9,8 @@ from app.database import get_db
 from app.models.client import Client
 from app.models.health_history import ClientHealthHistory
 from app.models.system import SystemAuditLog
-from app.schemas.client import ClientCreate, ClientUpdate, ClientOut, ClientListOut
+from app.models.user import User
+from app.schemas.client import ClientAssignRequest, ClientCreate, ClientUpdate, ClientOut, ClientListOut
 from app.utils.deadline_sync import seed_client_applicability
 from app.utils.deps import get_current_user, require_role
 from app.utils.scoped_query import scoped
@@ -29,6 +30,28 @@ WORKLOAD_WEIGHTS = {
 }
 MAX_SAFE_WORKLOAD_UNITS = 40.0
 
+
+def _ca_email_map(db: Session, org_id) -> dict[str, str]:
+    rows = scoped(db, User, org_id).filter(User.role.in_(["manager", "partner"])).all()
+    return {str(row.id): row.email for row in rows}
+
+
+def _enrich_client(client: Client, ca_map: dict[str, str]):
+    email = ca_map.get(str(client.assigned_ca_user_id)) if client.assigned_ca_user_id else None
+    setattr(client, "assigned_ca_email", email)
+    setattr(client, "assigned_ca_name", email.split("@")[0].replace(".", " ").title() if email else None)
+    return client
+
+
+def _validate_assignee(db: Session, org_id, user_id) -> User | None:
+    if user_id is None:
+        return None
+    user = scoped(db, User, org_id).filter(User.id == user_id, User.status == "active").first()
+    if not user:
+        raise HTTPException(404, "Assignee user not found")
+    if user.role not in {"manager", "partner"}:
+        raise HTTPException(422, "Clients can only be assigned to CA (manager) or partner users")
+    return user
 
 def _ensure_unique_gstin(db: Session, org_id, gstin: str | None, client_id: str | None = None) -> None:
     if not gstin:
@@ -98,7 +121,7 @@ def _audit_client(db: Session, request: Request, action: str, client: Client, pa
 @router.get("", response_model=List[ClientListOut])
 def list_clients(request: Request, db: Session = Depends(get_db),
                  skip: int = 0, limit: int = 2000, search: str = "",
-                 include_archived: bool = False,
+                 include_archived: bool = False, mine_only: bool = False,
                  _=Depends(get_current_user)):
     """List all clients sorted by health_score ascending (worst first)."""
     if skip < 0:
@@ -108,11 +131,14 @@ def list_clients(request: Request, db: Session = Depends(get_db),
     query = scoped(db, Client, request.state.org_id)
     if not include_archived:
         query = query.filter(Client.status == "active")
+    if mine_only or getattr(request.state, "role", None) == "manager":
+        query = query.filter(Client.assigned_ca_user_id == request.state.user_id)
     if search:
         pattern = f"%{search.strip()}%"
         query = query.filter(or_(Client.name.ilike(pattern), Client.gstin.ilike(pattern), Client.email.ilike(pattern)))
-    return query.order_by(Client.health_score.asc(), Client.name.asc()).offset(skip).limit(limit).all()
-
+    rows = query.order_by(Client.health_score.asc(), Client.name.asc()).offset(skip).limit(limit).all()
+    ca_map = _ca_email_map(db, request.state.org_id)
+    return [_enrich_client(row, ca_map) for row in rows]
 
 @router.post("", response_model=ClientOut, status_code=201)
 def create_client(req: ClientCreate, request: Request,
@@ -155,7 +181,54 @@ def get_client(client_id: str, request: Request,
               .filter(Client.id == client_id, Client.status == "active").first())
     if not client:
         raise HTTPException(404, "Client not found")
-    return client
+    if getattr(request.state, "role", None) == "manager" and str(client.assigned_ca_user_id) != str(request.state.user_id):
+        raise HTTPException(403, "Client is not assigned to this CA")
+    return _enrich_client(client, _ca_email_map(db, request.state.org_id))
+
+
+@router.post("/{client_id}/assign", response_model=ClientOut)
+def assign_client_to_ca(
+    client_id: str,
+    payload: ClientAssignRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    _=Depends(require_role(["partner"])),
+):
+    """Firm Head assigns a client to a CA (manager)."""
+    client = (scoped(db, Client, request.state.org_id)
+              .filter(Client.id == client_id, Client.status == "active").first())
+    if not client:
+        raise HTTPException(404, "Client not found")
+    assignee = _validate_assignee(db, request.state.org_id, payload.assigned_ca_user_id)
+    client.assigned_ca_user_id = assignee.id if assignee else None
+    db.flush()
+    _audit_client(
+        db,
+        request,
+        "CLIENT_ASSIGNED",
+        client,
+        {
+            "assigned_ca_user_id": str(assignee.id) if assignee else None,
+            "assigned_ca_email": assignee.email if assignee else None,
+        },
+    )
+    publish_event(
+        db,
+        org_id=request.state.org_id,
+        actor_id=request.state.user_id,
+        event_type="client.assigned",
+        aggregate_type="client",
+        aggregate_id=str(client.id),
+        source_module="clients",
+        payload={
+            "client_name": client.name,
+            "assigned_ca_user_id": str(assignee.id) if assignee else None,
+            "assigned_ca_email": assignee.email if assignee else None,
+        },
+    )
+    db.commit()
+    db.refresh(client)
+    return _enrich_client(client, _ca_email_map(db, request.state.org_id))
 
 
 @router.patch("/{client_id}", response_model=ClientOut)
@@ -166,6 +239,10 @@ def update_client(client_id: str, req: ClientUpdate, request: Request,
     if not client:
         raise HTTPException(404, "Client not found")
     payload = req.model_dump(exclude_none=True)
+    if "assigned_ca_user_id" in payload:
+        if getattr(request.state, "role", None) != "partner":
+            raise HTTPException(403, "Only Firm Head can assign clients to CAs")
+        _validate_assignee(db, request.state.org_id, payload.get("assigned_ca_user_id"))
     _ensure_unique_gstin(db, request.state.org_id, payload.get("gstin"), client_id=client_id)
     _ensure_unique_pan(db, request.state.org_id, payload.get("pan"), client_id=client_id)
     for key, val in payload.items():
@@ -187,7 +264,7 @@ def update_client(client_id: str, req: ClientUpdate, request: Request,
     )
     db.commit()
     db.refresh(client)
-    return client
+    return _enrich_client(client, _ca_email_map(db, request.state.org_id))
 
 
 @router.delete("/{client_id}", status_code=204)

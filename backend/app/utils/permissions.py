@@ -30,9 +30,11 @@ STAFF_PLUS = ("partner", "manager", "article")
 # Sign-off / destructive actions use finer ACTION_PERMISSIONS below.
 FEATURE_ROLES: dict[str, tuple[str, ...]] = {
     # Command
-    "command_center": STAFF_PLUS,
-    "exception_autopilot": STAFF_PLUS,  # article: action assigned; manage=manager+
-    "ask_ca_copilot": STAFF_PLUS,
+  "command_center": STAFF_PLUS,
+  "workspace_partner": ALL_ACCESS_ROLES,
+  "workspace_ca": MANAGER_PLUS,
+  "workspace_staff": STAFF_PLUS,
+  "exception_autopilot": STAFF_PLUS,  # article: action assigned; manage=manager+    "ask_ca_copilot": STAFF_PLUS,
     # Practice
     "clients_crm": STAFF_PLUS,
     "work_daybook": STAFF_PLUS,
@@ -62,6 +64,8 @@ FEATURE_ROLES: dict[str, tuple[str, ...]] = {
     "statutory_checklist": STAFF_PLUS,
     "logic_audit_layer1": STAFF_PLUS,
     "causal_risk_layer3": STAFF_PLUS,
+    "ai_auditor_layer4": STAFF_PLUS,
+    "ai_audit_orchestrator": STAFF_PLUS,
     # Office
     "billing_collections": MANAGER_PLUS,  # partner=full financial; manager=own clients
     "team_attendance": STAFF_PLUS,  # article: own attendance; manage=manager+
