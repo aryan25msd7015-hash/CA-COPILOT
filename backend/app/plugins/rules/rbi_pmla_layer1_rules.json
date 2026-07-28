@@ -1,0 +1,102 @@
+[
+  {
+    "rule_id": "rbi_ctr_over_10l",
+    "name": "CTR single transaction above 10 lakh",
+    "category": "RBI/PMLA",
+    "severity": "critical",
+    "all_of": [
+      { "field": "amount", "op": "gt", "value": 1000000 }
+    ]
+  },
+  {
+    "rule_id": "pmla_structuring_24h",
+    "name": "Structuring in 24-hour window",
+    "category": "RBI/PMLA",
+    "severity": "high",
+    "all_of": [
+      { "field": "total_amount_24h", "op": "gt", "value": 1000000 },
+      { "field": "txn_count_24h", "op": "gte", "value": 3 },
+      { "field": "amount", "op": "lt", "value": 1000000 }
+    ]
+  },
+  {
+    "rule_id": "rbi_weekend_high_value",
+    "name": "Weekend high-value debit",
+    "category": "RBI monitoring",
+    "severity": "high",
+    "all_of": [
+      { "predicate": "is_weekend" },
+      { "field": "amount", "op": "gt", "value": 200000 }
+    ]
+  },
+  {
+    "rule_id": "rbi_new_beneficiary_high_value",
+    "name": "New beneficiary high value transfer",
+    "category": "RBI UPI/IMPS monitoring",
+    "severity": "critical",
+    "all_of": [
+      { "field": "is_new_beneficiary", "op": "eq", "value": true },
+      { "field": "amount", "op": "gt", "value": 100000 }
+    ]
+  },
+  {
+    "rule_id": "rbi_device_change_risk",
+    "name": "Rapid device change with high amount",
+    "category": "Cyber fraud",
+    "severity": "high",
+    "all_of": [
+      { "field": "device_change_24h", "op": "gte", "value": 2 },
+      { "field": "amount", "op": "gt", "value": 200000 }
+    ]
+  },
+  {
+    "rule_id": "pmla_dormant_reactivation",
+    "name": "Dormant account sudden activity",
+    "category": "PMLA monitoring",
+    "severity": "high",
+    "all_of": [
+      { "field": "days_since_last_txn", "op": "gte", "value": 90 },
+      { "field": "amount", "op": "gt", "value": 500000 }
+    ]
+  },
+  {
+    "rule_id": "rbi_high_velocity_1h",
+    "name": "High velocity transfers in one hour",
+    "category": "RBI suspicious pattern",
+    "severity": "high",
+    "all_of": [
+      { "field": "txn_count_1h", "op": "gte", "value": 5 },
+      { "field": "total_amount_1h", "op": "gt", "value": 500000 }
+    ]
+  },
+  {
+    "rule_id": "pmla_round_amount_pattern",
+    "name": "Large round-amount transfer pattern",
+    "category": "PMLA pattern",
+    "severity": "medium",
+    "all_of": [
+      { "field": "is_round_amount", "op": "eq", "value": true },
+      { "field": "amount", "op": "gte", "value": 500000 }
+    ]
+  },
+  {
+    "rule_id": "rbi_cross_border_new_beneficiary",
+    "name": "Cross-border transfer to new beneficiary",
+    "category": "FEMA/RBI",
+    "severity": "critical",
+    "all_of": [
+      { "field": "is_international", "op": "eq", "value": true },
+      { "field": "is_new_beneficiary", "op": "eq", "value": true },
+      { "field": "amount", "op": "gt", "value": 250000 }
+    ]
+  },
+  {
+    "rule_id": "pmla_pan_gstin_mismatch",
+    "name": "PAN and GSTIN mismatch indicator",
+    "category": "KYC/AML",
+    "severity": "high",
+    "all_of": [
+      { "field": "pan_gstin_mismatch", "op": "eq", "value": true }
+    ]
+  }
+]
