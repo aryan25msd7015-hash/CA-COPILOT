@@ -83,6 +83,13 @@ def _saved_out(row: SavedQuery) -> dict:
             raise ValueError("Saved query must be between 3 and 1000 characters")
         return normalized
 
+@router.get("/capability")
+def query_capability(_=Depends(get_current_user)):
+    from app.engines.llm_gateway import capability_status
+
+    return capability_status()
+
+
 @router.post("/ask")
 def ask(payload: AskRequest, request: Request, db: Session = Depends(get_db),
         user=Depends(get_current_user)):

@@ -42,6 +42,7 @@ type SpeechRecognitionLike = {
   onerror: ((event: { error?: string }) => void) | null;
   start: () => void;
   stop: () => void;
+  abort?: () => void;
 };
 
 declare global {
@@ -66,6 +67,8 @@ const WAKE_PROMPTS = [
 ];
 
 const WAKE_WORD_RE = /^(hey\s+)?(ca\s+)?friday[\s,.:;-]*/i;
+const SINGLE_COMMAND_MS = 12_000;
+const RESTART_DELAY_MS = 280;
 
 function normalize(value: string) {
   return value.trim().toLowerCase();
@@ -94,8 +97,10 @@ export default function VoiceAssistant() {
   const router = useRouter();
   const pathname = usePathname();
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const sessionIdRef = useRef(0);
   const alwaysListenRef = useRef(false);
-  const restartingRef = useRef(false);
+  const mountedRef = useRef(true);
+  const restartTimerRef = useRef<number | null>(null);
   const manuallyStoppedRef = useRef(false);
   const listenDeadlineRef = useRef(0);
   const [open, setOpen] = useState(false);
@@ -160,6 +165,40 @@ export default function VoiceAssistant() {
     );
   }
 
+  const clearRestartTimer = useCallback(() => {
+    if (restartTimerRef.current != null) {
+      window.clearTimeout(restartTimerRef.current);
+      restartTimerRef.current = null;
+    }
+  }, []);
+
+  const stopRecognitionHard = useCallback((opts?: { manual?: boolean; clearDeadline?: boolean }) => {
+    clearRestartTimer();
+    if (opts?.manual) manuallyStoppedRef.current = true;
+    if (opts?.clearDeadline !== false) listenDeadlineRef.current = 0;
+    sessionIdRef.current += 1;
+    const active = recognitionRef.current;
+    recognitionRef.current = null;
+    if (!active) {
+      setListening(false);
+      return;
+    }
+    active.onstart = null;
+    active.onresult = null;
+    active.onerror = null;
+    active.onend = null;
+    try {
+      active.abort?.();
+    } catch {
+      try {
+        active.stop();
+      } catch {
+        /* already stopped */
+      }
+    }
+    setListening(false);
+  }, [clearRestartTimer]);
+
   const loadTelemetry = useCallback(async () => {
     const [clientsRes, deadlinesRes, autopilotRes, readinessRes] = await Promise.allSettled([
       api.get<Client[]>('/clients?limit=2000'),
@@ -186,14 +225,17 @@ export default function VoiceAssistant() {
   }, [loadTelemetry]);
 
   useEffect(() => {
+    mountedRef.current = true;
     if (!user) return;
     refreshTelemetry();
     return () => {
+      mountedRef.current = false;
       alwaysListenRef.current = false;
-      recognitionRef.current?.stop();
+      manuallyStoppedRef.current = true;
+      stopRecognitionHard({ manual: true });
       window.speechSynthesis?.cancel();
     };
-  }, [refreshTelemetry, user]);
+  }, [refreshTelemetry, stopRecognitionHard, user]);
 
   async function summarizePractice() {
     const fresh = await loadTelemetry();
@@ -278,9 +320,10 @@ export default function VoiceAssistant() {
     }
   }
 
-  function shouldRestartRecognition(alwaysOn: boolean) {
+  function shouldRestartRecognition() {
+    if (!mountedRef.current) return false;
     if (manuallyStoppedRef.current) return false;
-    if (alwaysOn || alwaysListenRef.current) return true;
+    if (alwaysListenRef.current) return true;
     return Date.now() < listenDeadlineRef.current;
   }
 
@@ -295,20 +338,47 @@ export default function VoiceAssistant() {
       return;
     }
 
+    clearRestartTimer();
     manuallyStoppedRef.current = false;
-    if (!alwaysOn) {
-      listenDeadlineRef.current = Date.now() + 30000;
+    if (alwaysOn) {
+      listenDeadlineRef.current = 0;
+    } else {
+      listenDeadlineRef.current = Date.now() + SINGLE_COMMAND_MS;
     }
-    recognitionRef.current?.stop();
+
+    // Invalidate any previous session before starting a fresh recognizer.
+    const previous = recognitionRef.current;
+    recognitionRef.current = null;
+    if (previous) {
+      previous.onstart = null;
+      previous.onresult = null;
+      previous.onerror = null;
+      previous.onend = null;
+      try {
+        previous.abort?.();
+      } catch {
+        try {
+          previous.stop();
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+
+    const sessionId = ++sessionIdRef.current;
     const recognition = new Recognition();
     recognition.continuous = alwaysOn;
     recognition.interimResults = false;
     recognition.lang = 'en-IN';
+
     recognition.onstart = () => {
+      if (sessionId !== sessionIdRef.current || !mountedRef.current) return;
       setListening(true);
       setVoiceNotice(alwaysOn ? 'Listening. Say "Friday" before a command.' : 'Listening for this command.');
     };
+
     recognition.onresult = event => {
+      if (sessionId !== sessionIdRef.current || !mountedRef.current) return;
       const transcript = event.results[event.results.length - 1]?.[0]?.transcript || '';
       if (!transcript) return;
       setLastHeard(transcript);
@@ -324,13 +394,19 @@ export default function VoiceAssistant() {
           answer('Yes. I am listening.');
           return;
         }
-        runCommand(command);
+        void runCommand(command);
         return;
       }
 
-      runCommand(transcript);
+      // One-shot mode: consume the utterance and stop restarting.
+      listenDeadlineRef.current = 0;
+      manuallyStoppedRef.current = true;
+      clearRestartTimer();
+      void runCommand(transcript);
     };
+
     recognition.onerror = event => {
+      if (sessionId !== sessionIdRef.current || !mountedRef.current) return;
       const code = event.error || 'unknown';
       setListening(false);
       if (code === 'no-speech' || code === 'aborted') {
@@ -339,33 +415,44 @@ export default function VoiceAssistant() {
       }
       if (code === 'not-allowed' || code === 'service-not-allowed') {
         alwaysListenRef.current = false;
+        manuallyStoppedRef.current = true;
+        listenDeadlineRef.current = 0;
+        clearRestartTimer();
         setAlwaysListening(false);
         setVoiceNotice('Microphone permission is blocked');
         answer('Microphone permission is blocked. Allow microphone access in the browser to enable always-listening mode.');
         return;
       }
       if (code === 'network') {
+        // Avoid thrashing the mic when the speech service is down.
+        if (!alwaysListenRef.current) {
+          manuallyStoppedRef.current = true;
+          listenDeadlineRef.current = 0;
+        }
         setVoiceNotice('Speech service unavailable. Type the command for now.');
         return;
       }
       setVoiceNotice(`Voice recognizer paused: ${code}`);
     };
+
     recognition.onend = () => {
-      setListening(false);
-      recognitionRef.current = null;
-      if (!shouldRestartRecognition(alwaysOn)) {
-        if (!alwaysListenRef.current) setVoiceNotice('Voice idle');
+      if (sessionId !== sessionIdRef.current) return;
+      if (mountedRef.current) setListening(false);
+      if (recognitionRef.current === recognition) recognitionRef.current = null;
+      if (!shouldRestartRecognition()) {
+        if (mountedRef.current && !alwaysListenRef.current) setVoiceNotice('Voice idle');
         return;
       }
-      window.setTimeout(() => {
-        if (!shouldRestartRecognition(alwaysOn) || restartingRef.current) return;
-        restartingRef.current = true;
-        startRecognition(alwaysOn);
-        restartingRef.current = false;
-      }, 120);
+      clearRestartTimer();
+      restartTimerRef.current = window.setTimeout(() => {
+        restartTimerRef.current = null;
+        if (sessionId !== sessionIdRef.current) return;
+        if (!shouldRestartRecognition()) return;
+        startRecognition(alwaysListenRef.current);
+      }, RESTART_DELAY_MS);
     };
+
     recognitionRef.current = recognition;
-    setOpen(true);
     setVoiceNotice(alwaysOn ? 'Always listening. Say "Friday" to activate.' : 'Listening for this command.');
     try {
       recognition.start();
@@ -378,31 +465,38 @@ export default function VoiceAssistant() {
   function toggleAlwaysListening() {
     if (alwaysListenRef.current) {
       alwaysListenRef.current = false;
-      manuallyStoppedRef.current = true;
-      listenDeadlineRef.current = 0;
       setAlwaysListening(false);
-      setListening(false);
+      stopRecognitionHard({ manual: true });
       setVoiceNotice('Always-listening mode off');
-      recognitionRef.current?.stop();
       return;
     }
     alwaysListenRef.current = true;
     setAlwaysListening(true);
+    setOpen(true);
     startRecognition(true);
   }
 
   function toggleSingleCommandListening() {
     if (listening && !alwaysListening) {
-      manuallyStoppedRef.current = true;
-      listenDeadlineRef.current = 0;
-      recognitionRef.current?.stop();
-      setListening(false);
+      stopRecognitionHard({ manual: true });
       setVoiceNotice('Voice idle');
       return;
     }
     alwaysListenRef.current = false;
     setAlwaysListening(false);
+    setOpen(true);
     startRecognition(false);
+  }
+
+  function closePanel() {
+    // Closing the HUD must not leave a runaway mic session.
+    if (alwaysListenRef.current) {
+      alwaysListenRef.current = false;
+      setAlwaysListening(false);
+    }
+    stopRecognitionHard({ manual: true });
+    setVoiceNotice('Wake word: "Friday"');
+    setOpen(false);
   }
 
   if (!user) return null;
@@ -436,7 +530,7 @@ export default function VoiceAssistant() {
                 <button
                   type="button"
                   title="Close CA-FRIDAY"
-                  onClick={() => setOpen(false)}
+                  onClick={closePanel}
                   className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 text-slate-300 transition hover:bg-white/10 hover:text-white"
                 >
                   <X className="h-4 w-4" />
@@ -561,7 +655,7 @@ export default function VoiceAssistant() {
                 <input
                   value={input}
                   onChange={event => setInput(event.target.value)}
-                placeholder={alwaysListening ? 'Or type without wake word...' : 'Command CA-FRIDAY...'}
+                  placeholder={alwaysListening ? 'Or type without wake word...' : 'Command CA-FRIDAY...'}
                   className="h-11 w-full rounded-2xl border border-cyan-300/20 bg-slate-900/80 px-4 pr-12 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-200 focus:ring-4 focus:ring-cyan-300/10"
                 />
                 <Sparkles className="absolute right-4 top-3.5 h-4 w-4 text-cyan-200/70" />
@@ -592,8 +686,13 @@ export default function VoiceAssistant() {
         aria-label="Voice Agent"
         data-testid="voice-agent-launcher"
         onClick={() => {
+          if (open) {
+            closePanel();
+            return;
+          }
+          // Open the panel only — never auto-grab the microphone.
           setOpen(true);
-          if (!alwaysListenRef.current) toggleAlwaysListening();
+          setVoiceNotice(alwaysListening ? 'Always listening. Say "Friday" to activate.' : 'Wake word: "Friday" — enable always-listen or tap the mic.');
         }}
         className="jarvis-launcher group relative flex h-16 items-center gap-3 overflow-hidden rounded-2xl border border-cyan-200/50 bg-slate-950 px-4 text-white shadow-[0_18px_45px_rgba(8,47,73,0.38)] transition hover:-translate-y-0.5"
       >

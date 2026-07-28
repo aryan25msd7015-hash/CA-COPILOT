@@ -44,6 +44,13 @@ services:
       AWS_REGION: ap-south-1
       FRONTEND_URL: http://localhost:3000
       ENV: development
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      LLM_PROVIDER_ORDER: ${LLM_PROVIDER_ORDER:-anthropic,openai,groq,gemini,openrouter}
+      LLM_SQL_MODEL: ${LLM_SQL_MODEL:-}
       # CI/local compose migrate explicitly (quality.yml + docs); avoid race with entrypoint.
       SKIP_DB_MIGRATE: "1"
     depends_on:
@@ -98,6 +105,11 @@ services:
       AWS_REGION: ap-south-1
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      LLM_PROVIDER_ORDER: ${LLM_PROVIDER_ORDER:-anthropic,openai,groq,gemini,openrouter}
+      LLM_SQL_MODEL: ${LLM_SQL_MODEL:-}
     depends_on:
       - postgres
       - redis
