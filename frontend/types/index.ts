@@ -58,6 +58,9 @@ export interface Client {
   registered_office?: string;
   benchmark_consent_at?: string;
   status?: 'active' | 'archived';
+  assigned_ca_user_id?: string;
+  assigned_ca_email?: string;
+  assigned_ca_name?: string;
   client_partition?: string;
   lifecycle_metadata?: Record<string, unknown>;
   deleted_at?: string;

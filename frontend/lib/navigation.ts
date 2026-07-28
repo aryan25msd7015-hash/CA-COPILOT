@@ -28,6 +28,9 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Command',
     items: [
+      item('/workspaces/partner', 'Firm Head Desk', 'workspace_partner', ['partner workspace', 'assignment']),
+      item('/workspaces/ca', 'CA Desk', 'workspace_ca', ['manager workspace', 'assigned clients']),
+      item('/workspaces/staff', 'Staff Desk', 'workspace_staff', ['article workspace', 'execution']),
       item('/', 'Command Center', 'command_center', ['dashboard', 'home', 'overview']),
       item('/autopilot', 'Exception Autopilot', 'exception_autopilot', ['review', 'exceptions', 'inbox']),
       item('/query', 'Ask CA Copilot', 'ask_ca_copilot', ['search', 'nl query', 'ask']),

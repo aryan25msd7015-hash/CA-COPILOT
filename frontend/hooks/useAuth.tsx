@@ -6,7 +6,7 @@ import { getAccessToken, decodeToken, login as loginRequest, logout } from '@/li
 interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
-  login: (email: string, password: string, mfaCode?: string, recoveryCode?: string) => Promise<{ mfaRequired: boolean }>;
+  login: (email: string, password: string, mfaCode?: string, recoveryCode?: string) => Promise<{ mfaRequired: boolean; role?: User['role'] }>;
   logout: () => void;
 }
 
@@ -50,7 +50,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const result = await loginRequest(email, password, mfaCode, recoveryCode);
     if (result.mfa_required) return { mfaRequired: true };
     loadUser();
-    return { mfaRequired: false };
+    const token = getAccessToken();
+    const payload = token ? decodeToken(token) : null;
+    return { mfaRequired: false, role: payload?.role as User['role'] | undefined };
   }
 
   return (

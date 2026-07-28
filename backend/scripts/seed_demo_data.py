@@ -17,6 +17,7 @@ from app.models.transaction import Transaction
 from app.models.user import User
 from app.models.whatsapp_reminder import WhatsAppReminder
 from app.models.autopilot import AutopilotSyncRun
+from app.models.practice_ops import ClientPortalContact
 from app.models.extensions import (
     BankFacility, CertificateRecord, DeadlineClientMap, DebtorItem,
     DrawingPowerStatement, FirmCredential, InventoryItem, LeaseRecord,
@@ -34,6 +35,12 @@ from app.engines.autopilot_engine import refresh_autopilot_exceptions
 
 DEMO_EMAIL = "demo@cacopilot.example.com"
 DEMO_PASSWORD = "DemoPass123"
+ROLE_DEMO_USERS = [
+    ("partner@cacopilot.example.com", "PartnerDemo123", "partner"),
+    ("ca@cacopilot.example.com", "CADemo123", "manager"),
+    ("staff@cacopilot.example.com", "StaffDemo123", "article"),
+]
+CLIENT_DEMO_EMAIL = "client@apex.example.com"
 DEMO_RATIOS = {
     "current_ratio": 1.72,
     "debt_equity_ratio": 1.05,
@@ -314,6 +321,26 @@ def main():
         now = datetime.now(timezone.utc)
         today = date.today()
 
+        role_users = {}
+        for email, password, role in ROLE_DEMO_USERS:
+            row = db.query(User).filter(User.email == email).first()
+            if not row:
+                row = User(
+                    org_id=org.id,
+                    email=email,
+                    password_hash=pwd_ctx.hash(password),
+                    role=role,
+                    email_verified_at=now,
+                )
+                db.add(row)
+                db.flush()
+            else:
+                row.password_hash = pwd_ctx.hash(password)
+                row.role = role
+                row.org_id = org.id
+                row.status = "active"
+            role_users[role] = row
+
         apex = get_or_create_client(
             db, org, "Apex Manufacturing Pvt Ltd",
             gstin="27ABCDE1234F1Z5", email="finance@apex.example.com",
@@ -321,18 +348,40 @@ def main():
             benchmark_consent_at=now, industry="Manufacturing", health_score=68,
             entity_type="pvt_ltd", cin="U28999MH2012PTC123456",
             registered_office="Mumbai, Maharashtra",
+            assigned_ca_user_id=role_users["manager"].id,
         )
         retail = get_or_create_client(
             db, org, "Bright Retail LLP", gstin="29AABCT1332L1ZD",
             email="accounts@bright.example.com", industry="Retail", health_score=43,
             entity_type="llp", cin="AAB-1234", registered_office="Bengaluru, Karnataka",
+            assigned_ca_user_id=role_users["manager"].id,
         )
         services = get_or_create_client(
             db, org, "Crest Services Ltd", gstin="07AACCC1234D1Z8",
             email="ops@crest.example.com", industry="Services", health_score=86,
             entity_type="pvt_ltd", cin="U74999DL2015PTC654321",
             registered_office="New Delhi",
+            assigned_ca_user_id=None,
         )
+
+        portal_contact = (
+            db.query(ClientPortalContact)
+            .filter(ClientPortalContact.client_id == apex.id, ClientPortalContact.email == CLIENT_DEMO_EMAIL)
+            .first()
+        )
+        if not portal_contact:
+            portal_contact = ClientPortalContact(
+                org_id=org.id,
+                client_id=apex.id,
+                name="Apex Client Demo",
+                email=CLIENT_DEMO_EMAIL,
+                role="client_user",
+                access_status="invited",
+            )
+            db.add(portal_contact)
+        else:
+            portal_contact.access_status = "invited"
+            portal_contact.name = "Apex Client Demo"
 
         for client in (apex, retail, services):
             seed_client_applicability(db, client)
@@ -431,10 +480,13 @@ def main():
         seed_peer_pool(db)
         refresh_autopilot_exceptions(db, str(org.id))
         db.commit()
-        print("Demo data ready for demo@cacopilot.example.com")
+        print("Demo data ready:")
+        print(f"  legacy partner: {DEMO_EMAIL} / {DEMO_PASSWORD}")
+        for email, password, role in ROLE_DEMO_USERS:
+            print(f"  {role}: {email} / {password}")
+        print(f"  client portal: {CLIENT_DEMO_EMAIL} (use demo portal login)")
     finally:
         db.close()
-
 
 if __name__ == "__main__":
     main()

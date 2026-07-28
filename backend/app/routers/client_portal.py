@@ -144,6 +144,57 @@ def confirm_magic_link(payload: PortalMagicLinkConfirm, db: Session = Depends(ge
     )
 
 
+@router.post("/auth/demo-login", response_model=PortalLoginResponse)
+def demo_portal_login(payload: PortalMagicLinkRequest, db: Session = Depends(get_db)):
+    """Non-production helper: passwordless demo portal entry for seeded client contact."""
+    from app.config import settings
+    from app.utils.demo_credentials import DEMO_ACCOUNTS
+
+    if settings.ENV == "production":
+        raise HTTPException(403, "Demo portal login disabled in production")
+
+    email = payload.email.strip().lower()
+    demo = next((item for item in DEMO_ACCOUNTS if item["tier"] == "client" and item["email"] == email), None)
+    if not demo:
+        raise HTTPException(404, "Unknown demo client account")
+
+    contact = (
+        db.query(ClientPortalContact)
+        .filter(ClientPortalContact.email == email)
+        .order_by(ClientPortalContact.created_at.desc())
+        .first()
+    )
+    if not contact:
+        raise HTTPException(404, "Demo portal contact not seeded yet")
+
+    client = db.query(Client).filter(Client.id == contact.client_id, Client.org_id == contact.org_id).first()
+    contact.last_login_at = datetime.now(timezone.utc)
+    contact.access_status = "active"
+    db.commit()
+    access = create_access_token({
+        "sub": str(contact.id),
+        "org_id": str(contact.org_id),
+        "client_id": str(contact.client_id),
+        "role": "client",
+        "auth_context": "portal",
+        "email": contact.email,
+        "perms": [
+            "portal:view_own",
+            "portal:upload_docs",
+            "portal:view_deadlines",
+            "portal:view_invoices",
+        ],
+    })
+    return PortalLoginResponse(
+        access_token=access,
+        contact=_contact_out(contact, client),
+        client={
+            "id": str(client.id) if client else str(contact.client_id),
+            "name": client.name if client else "",
+        },
+    )
+
+
 def _require_portal(request: Request):
     if getattr(request.state, "auth_context", None) != "portal":
         raise HTTPException(403, "Portal session required")

@@ -43,6 +43,7 @@ class Client(Base):
     benchmark_consent_note = Column(Text)
     benchmark_consent_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), index=True)
     status = Column(String(20), nullable=False, default="active")
+    assigned_ca_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), index=True)
     client_partition = Column(Text)
     lifecycle_metadata = Column(JSONB, nullable=False, default=dict)
     deleted_at = Column(DateTime(timezone=True))

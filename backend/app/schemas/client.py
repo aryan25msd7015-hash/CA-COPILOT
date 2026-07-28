@@ -103,6 +103,7 @@ class ClientCreate(ClientBase):
     entity_type: str = "pvt_ltd"
     cin: Optional[str] = None
     registered_office: Optional[str] = None
+    assigned_ca_user_id: Optional[UUID] = None
 
 
 class ClientUpdate(ClientBase):
@@ -116,6 +117,11 @@ class ClientUpdate(ClientBase):
     entity_type: Optional[str] = None
     cin: Optional[str] = None
     registered_office: Optional[str] = None
+    assigned_ca_user_id: Optional[UUID] = None
+
+
+class ClientAssignRequest(BaseModel):
+    assigned_ca_user_id: Optional[UUID] = None
 
 
 class ClientOut(BaseModel):
@@ -135,6 +141,9 @@ class ClientOut(BaseModel):
     registered_office: Optional[str] = None
     benchmark_consent_at: Optional[datetime] = None
     status: str = "active"
+    assigned_ca_user_id: Optional[UUID] = None
+    assigned_ca_email: Optional[str] = None
+    assigned_ca_name: Optional[str] = None
     client_partition: Optional[str] = None
     lifecycle_metadata: dict = {}
     deleted_at: Optional[datetime] = None
@@ -160,6 +169,8 @@ class ClientListOut(BaseModel):
     whatsapp_consent_at: Optional[datetime] = None
     benchmark_consent_at: Optional[datetime] = None
     status: str = "active"
+    assigned_ca_user_id: Optional[UUID] = None
+    assigned_ca_email: Optional[str] = None
     client_partition: Optional[str] = None
 
     model_config = {"from_attributes": True}
