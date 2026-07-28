@@ -229,6 +229,8 @@ class MultiModalEncoder:
         return np.clip(vec, -4.0, 4.0)
 
     def _pdf_layout_vector(self, pdf_text: str) -> np.ndarray:
+        if not pdf_text.strip():
+            return self._text_vector(pdf_text)
         self._ensure_layoutlm()
         if self._layoutlm_model is None or self._layoutlm_tokenizer is None:
             return self._text_vector(pdf_text)
@@ -240,19 +242,25 @@ class MultiModalEncoder:
 
         device = "cuda" if torch.cuda.is_available() else "cpu"
         self._layoutlm_model.to(device)
-        encoded = self._layoutlm_tokenizer(
-            pdf_text[:4000],
-            return_tensors="pt",
-            truncation=True,
-            max_length=512,
-        )
-        encoded = {k: v.to(device) for k, v in encoded.items()}
-        with torch.inference_mode():
-            if device == "cuda":
-                with torch.autocast(device_type="cuda", dtype=torch.float16):
+        words = re.findall(r"\S+", pdf_text[:4000])
+        boxes = [[0, 0, 0, 0] for _ in words]
+        try:
+            encoded = self._layoutlm_tokenizer(
+                words,
+                boxes=boxes,
+                return_tensors="pt",
+                truncation=True,
+                max_length=512,
+            )
+            encoded = {k: v.to(device) for k, v in encoded.items()}
+            with torch.inference_mode():
+                if device == "cuda":
+                    with torch.autocast(device_type="cuda", dtype=torch.float16):
+                        outputs = self._layoutlm_model(**encoded)
+                else:
                     outputs = self._layoutlm_model(**encoded)
-            else:
-                outputs = self._layoutlm_model(**encoded)
+        except Exception:
+            return self._text_vector(pdf_text)
         pooled = outputs.last_hidden_state.mean(dim=1).detach().cpu().numpy().reshape(-1)
         if pooled.size >= self.embedding_dim:
             return pooled[: self.embedding_dim].astype(np.float32)
