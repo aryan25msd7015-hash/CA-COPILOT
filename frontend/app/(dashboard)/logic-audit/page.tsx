@@ -30,13 +30,28 @@ const SAMPLE_TXN = {
 interface AuditResult {
   is_flagged: boolean;
   rules_hit: string[];
+  risk_score: number;
   proof: Record<string, string>;
+  rule_results: Record<string, {
+    hit: boolean;
+    severity: string;
+    matched_conditions: string[];
+    failed_conditions: string[];
+    explanation: string;
+  }>;
+  graph_summary: {
+    account_id: string;
+    neighbors: string[];
+    relations: string[];
+    degree: number;
+  };
 }
 
 interface PluginStatus {
   plugin: string;
   status: string;
   rules_loaded: number;
+  severity_catalog: string[];
   graph_nodes: number;
   graph_edges: number;
 }
@@ -109,6 +124,7 @@ export default function LogicAuditPage() {
                 <li><strong>Plugin:</strong> {status.data.plugin}</li>
                 <li><strong>Status:</strong> {status.data.status}</li>
                 <li><strong>Rules loaded:</strong> {status.data.rules_loaded}</li>
+                <li><strong>Severities:</strong> {status.data.severity_catalog.join(', ')}</li>
                 <li><strong>Graph nodes:</strong> {status.data.graph_nodes}</li>
                 <li><strong>Graph edges:</strong> {status.data.graph_edges}</li>
               </ul>
@@ -125,7 +141,25 @@ export default function LogicAuditPage() {
             <div className="space-y-3">
               <div className="rounded-lg bg-gray-50 p-3 text-xs">
                 <p><strong>Flagged:</strong> {mutation.data.is_flagged ? 'Yes' : 'No'}</p>
+                <p><strong>Risk score:</strong> {(mutation.data.risk_score * 100).toFixed(1)}%</p>
                 <p><strong>Rules hit:</strong> {mutation.data.rules_hit.join(', ') || '-'}</p>
+              </div>
+              <div className="rounded-lg border p-3 text-xs">
+                <p className="font-medium text-gray-900">Account graph summary</p>
+                <p className="mt-1"><strong>Account:</strong> {mutation.data.graph_summary.account_id}</p>
+                <p><strong>Degree:</strong> {mutation.data.graph_summary.degree}</p>
+                <p><strong>Relations:</strong> {mutation.data.graph_summary.relations.join(', ') || '-'}</p>
+              </div>
+              <div className="space-y-2 rounded-lg border p-3 text-xs">
+                <p className="font-medium text-gray-900">Rule-by-rule explanations</p>
+                {Object.entries(mutation.data.rule_results).map(([ruleId, result]) => (
+                  <div key={ruleId} className="rounded-lg bg-gray-50 p-2">
+                    <p>
+                      <strong>{ruleId}</strong> · {result.severity} · {result.hit ? 'hit' : 'not hit'}
+                    </p>
+                    <p className="mt-1 text-gray-700">{result.explanation}</p>
+                  </div>
+                ))}
               </div>
               <div className="max-h-[360px] overflow-auto rounded-lg bg-gray-900 p-3">
                 <pre className="text-[11px] leading-5 text-gray-100">

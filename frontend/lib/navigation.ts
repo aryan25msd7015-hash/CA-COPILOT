@@ -71,6 +71,7 @@ export const NAV_GROUPS: NavGroup[] = [
       item('/invoices', 'Invoice Scanner', 'invoice_scanner', ['fraud scanner']),
       item('/notices', 'Notice Drafter', 'notice_drafter', ['draft', 'reply']),
       item('/logic-audit', 'Logic Audit (Layer 1)', 'logic_audit_layer1', ['rbi', 'pmla', 'z3', 'rules']),
+      item('/causal-audit', 'Causal Audit (Layer 3)', 'causal_risk_layer3', ['root cause', 'forecast', 'rings']),
     ],
   },
   {

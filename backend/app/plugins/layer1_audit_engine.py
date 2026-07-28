@@ -81,7 +81,19 @@ class TransactionModel(BaseModel):
 @dataclass
 class RuleEvaluation:
     hit: bool
+    severity: str
     formal_proof: str
+    matched_conditions: list[str]
+    failed_conditions: list[str]
+    explanation: str
+
+
+SEVERITY_WEIGHTS = {
+    "low": 0.25,
+    "medium": 0.5,
+    "high": 0.75,
+    "critical": 1.0,
+}
 
 
 class RuleEngine:
@@ -100,9 +112,17 @@ class RuleEngine:
         results: dict[str, RuleEvaluation] = {}
         for rule in self.rules:
             hit = self._evaluate_rule(rule, txn)
+            matched_conditions, failed_conditions = self._summarize_conditions(rule, txn)
             formal_proof = self._build_formal_proof(rule, txn, hit=hit)
             self._audit_log(rule, txn, hit=hit)
-            results[rule.rule_id] = RuleEvaluation(hit=hit, formal_proof=formal_proof)
+            results[rule.rule_id] = RuleEvaluation(
+                hit=hit,
+                severity=rule.severity,
+                formal_proof=formal_proof,
+                matched_conditions=matched_conditions,
+                failed_conditions=failed_conditions,
+                explanation=self._build_explanation(rule, hit, matched_conditions, failed_conditions),
+            )
         return results
 
     def _evaluate_rule(self, rule: RuleDefinition, txn: TransactionModel) -> bool:
@@ -166,6 +186,42 @@ class RuleEngine:
             f"expected_hit={hit}; "
             f"assertions={[str(a) for a in solver.assertions()]}"
         )
+
+    def _summarize_conditions(
+        self,
+        rule: RuleDefinition,
+        txn: TransactionModel,
+    ) -> tuple[list[str], list[str]]:
+        matched: list[str] = []
+        failed: list[str] = []
+        for cond in [*rule.all_of, *rule.any_of]:
+            label = self._describe_condition(cond, txn)
+            if self._evaluate_condition_python(cond, txn):
+                matched.append(label)
+            else:
+                failed.append(label)
+        return matched, failed
+
+    def _build_explanation(
+        self,
+        rule: RuleDefinition,
+        hit: bool,
+        matched_conditions: list[str],
+        failed_conditions: list[str],
+    ) -> str:
+        if hit:
+            joined = "; ".join(matched_conditions) if matched_conditions else "no conditions"
+            return f"Rule '{rule.name}' triggered because {joined}."
+        blockers = "; ".join(failed_conditions) if failed_conditions else "the rule did not receive sufficient evidence"
+        return f"Rule '{rule.name}' did not trigger because {blockers}."
+
+    def _describe_condition(self, cond: RuleCondition, txn: TransactionModel) -> str:
+        if cond.predicate == "is_weekend":
+            return f"timestamp weekday={txn.timestamp.weekday()} implies weekend={txn.timestamp.weekday() >= 5}"
+        if not cond.field or not cond.op:
+            return "invalid condition"
+        raw = getattr(txn, cond.field)
+        return f"{cond.field}={raw} {cond.op} {cond.value}"
 
     def _evaluate_condition_z3(self, cond: RuleCondition, txn: TransactionModel) -> Any:
         if cond.predicate == "is_weekend":
@@ -246,6 +302,24 @@ class KnowledgeGraph:
             self.graph.add_node(beneficiary, kind="account")
             self.graph.add_edge(account, beneficiary, relation="transfers_to")
 
+    def summarize_account(self, account_id: str) -> dict[str, Any]:
+        account = f"account:{account_id}"
+        if not self.graph.has_node(account):
+            return {"account_id": account_id, "neighbors": [], "relations": [], "degree": 0}
+        neighbors = sorted(self.graph.successors(account))
+        relations = sorted(
+            {
+                data.get("relation", "unknown")
+                for _, _, data in self.graph.out_edges(account, data=True)
+            }
+        )
+        return {
+            "account_id": account_id,
+            "neighbors": neighbors,
+            "relations": relations,
+            "degree": self.graph.degree(account),
+        }
+
 
 class Layer1AuditPlugin:
     def __init__(self, rule_engine: RuleEngine, graph: KnowledgeGraph | None = None):
@@ -258,11 +332,30 @@ class Layer1AuditPlugin:
         evals = self.rule_engine.evaluate(txn)
 
         hits = [rule_id for rule_id, outcome in evals.items() if outcome.hit]
-        proof = {rule_id: outcome.formal_proof for rule_id, outcome in evals.items() if outcome.hit}
+        proof = {rule_id: outcome.formal_proof for rule_id, outcome in evals.items()}
+        severity_score = sum(
+            SEVERITY_WEIGHTS.get(outcome.severity, 0.0) for outcome in evals.values() if outcome.hit
+        )
+        normalized_risk = round(
+            min(1.0, severity_score / max(len(self.rule_engine.rules), 1)),
+            4,
+        )
         return {
             "is_flagged": bool(hits),
             "rules_hit": hits,
+            "risk_score": normalized_risk,
             "proof": proof,
+            "rule_results": {
+                rule_id: {
+                    "hit": outcome.hit,
+                    "severity": outcome.severity,
+                    "matched_conditions": outcome.matched_conditions,
+                    "failed_conditions": outcome.failed_conditions,
+                    "explanation": outcome.explanation,
+                }
+                for rule_id, outcome in evals.items()
+            },
+            "graph_summary": self.graph.summarize_account(txn.account_id),
         }
 
 

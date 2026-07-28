@@ -52,6 +52,8 @@ def test_extreme_transaction_hits_many_rules_with_proofs() -> None:
     for rule_id, result in outcomes.items():
         assert "z3_check=sat" in result.formal_proof
         assert rule_id in result.formal_proof
+        assert result.severity in {"low", "medium", "high", "critical"}
+        assert result.explanation
 
 
 def test_each_sample_rule_can_be_triggered() -> None:
@@ -127,9 +129,14 @@ def test_plugin_audit_txn_contract() -> None:
     plugin = Layer1AuditPlugin(rule_engine=RuleEngine.from_json_file(RULES_FILE))
     result = plugin.audit_txn(_base_txn())
 
-    assert set(result.keys()) == {"is_flagged", "rules_hit", "proof"}
+    assert set(result.keys()) == {"is_flagged", "rules_hit", "risk_score", "proof", "rule_results", "graph_summary"}
     assert result["is_flagged"] is True
     assert isinstance(result["rules_hit"], list)
     assert "rbi_ctr_over_10l" in result["rules_hit"]
+    assert 0.0 <= result["risk_score"] <= 1.0
     assert isinstance(result["proof"], dict)
     assert "rbi_ctr_over_10l" in result["proof"]
+    assert result["rule_results"]["rbi_ctr_over_10l"]["hit"] is True
+    assert "matched_conditions" in result["rule_results"]["rbi_ctr_over_10l"]
+    assert result["graph_summary"]["account_id"] == "ACC-1001"
+    assert "relations" in result["graph_summary"]
