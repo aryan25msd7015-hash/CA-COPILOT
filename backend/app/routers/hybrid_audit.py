@@ -13,6 +13,7 @@ from app.models.anomaly_flag import AnomalyFlag
 from app.models.audit_ml import AuditBanditEvent, AuditEngineRun, AuditModelArtifact
 from app.models.client import Client
 from app.models.transaction import Transaction
+from app.plugins.layer2_risk_fusion import plugin_for_org
 from app.utils.deps import get_current_user, require_role
 from app.utils.scoped_query import scoped
 
@@ -56,6 +57,10 @@ class BanditFeedbackRequest(BaseModel):
     context: list[float] = Field(default_factory=list)
 
 
+class ExplainBatchRequest(BaseModel):
+    transactions: list[dict[str, Any]] = Field(default_factory=list, min_length=1, max_length=200)
+
+
 @router.get("/status")
 def hae_status(request: Request, db: Session = Depends(get_db), _=Depends(get_current_user)):
     from app.engines import model_registry
@@ -71,6 +76,7 @@ def hae_status(request: Request, db: Session = Depends(get_db), _=Depends(get_cu
     )
     return {
         "engine": "HAE-5",
+        "plugin": plugin_for_org(org_id).status(),
         "mode": "human_auditor_precision",
         "layers": [
             "assertions", "rules", "isolation_forest_lof", "xgboost_lightgbm",
@@ -105,6 +111,16 @@ def hae_status(request: Request, db: Session = Depends(get_db), _=Depends(get_cu
             for r in runs
         ],
     }
+
+
+@router.post("/explain")
+def explain_transactions(
+    payload: ExplainBatchRequest,
+    request: Request,
+    _=Depends(get_current_user),
+):
+    plugin = plugin_for_org(request.state.org_id)
+    return plugin.analyze_batch(payload.transactions)
 
 
 @router.post("/train")

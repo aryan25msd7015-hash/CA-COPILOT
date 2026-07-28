@@ -51,6 +51,7 @@ export const FEATURE_ROLES: Record<string, Role[]> = {
   query_observation_ledger: STAFF_PLUS,
   statutory_checklist: STAFF_PLUS,
   logic_audit_layer1: STAFF_PLUS,
+  causal_risk_layer3: STAFF_PLUS,
   billing_collections: MANAGER_PLUS,
   team_attendance: STAFF_PLUS,
   dsc_password_vault: ALL_ACCESS,

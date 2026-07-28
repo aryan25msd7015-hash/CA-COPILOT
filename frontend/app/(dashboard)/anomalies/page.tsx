@@ -166,7 +166,15 @@ export default function AnomaliesPage() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-xs uppercase tracking-wide text-gray-500">HAE priority queue</p>
-          <p className="text-sm text-gray-700">LinUCB ranks open flags for reviewer attention. Engine: {haeStatus.data?.engine || 'HAE-4'} · scored txns: {haeStatus.data?.scored_transactions ?? '—'}</p>
+          <p className="text-sm text-gray-700">
+            LinUCB ranks open flags for reviewer attention. Engine: {haeStatus.data?.engine || 'HAE-4'} · scored txns: {haeStatus.data?.scored_transactions ?? '—'}
+          </p>
+          <p className="text-xs text-gray-500">
+            Layer 2 plugin: {haeStatus.data?.plugin?.status || 'unknown'} · artifacts
+            {' '}U:{haeStatus.data?.plugin?.artifacts?.unsupervised ? 'yes' : 'no'}
+            {' '}S:{haeStatus.data?.plugin?.artifacts?.supervised ? 'yes' : 'no'}
+            {' '}M:{haeStatus.data?.plugin?.artifacts?.stacker ? 'yes' : 'no'}
+          </p>
         </div>
         <button disabled={!clientId} onClick={runScore} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white disabled:opacity-50">Run HAE score</button>
       </div>

@@ -19,12 +19,15 @@ class RootCauseResult(BaseModel):
     counterfactual_risk: float = Field(ge=0.0, le=1.0)
     current_risk: float = Field(ge=0.0, le=1.0)
     causal_explanation: str
+    top_causes: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class Layer3Output(BaseModel):
     current_risk: float = Field(ge=0.0, le=1.0)
     predicted_7d_risk: float = Field(ge=0.0, le=1.0)
     causal_explanation: str
+    top_causes: list[dict[str, Any]] = Field(default_factory=list)
+    ring_summary: dict[str, Any] = Field(default_factory=dict)
 
 
 @dataclass
@@ -43,6 +46,7 @@ class CausalAnalyzer:
         treatment = self._pick_primary_cause(features)
         current_risk = self._baseline_risk(txn, features)
         counterfactual_risk = self._counterfactual_risk(features, treatment, current_risk)
+        ranked = self.rank_causes(features)
         explanation = (
             f"Primary cause is '{treatment}' because it has the highest causal signal "
             f"among provided features. Counterfactual risk falls to {counterfactual_risk:.2f} "
@@ -53,7 +57,23 @@ class CausalAnalyzer:
             counterfactual_risk=counterfactual_risk,
             current_risk=current_risk,
             causal_explanation=explanation,
+            top_causes=ranked,
         ).model_dump()
+
+    def rank_causes(self, features: dict[str, float], limit: int = 5) -> list[dict[str, float]]:
+        ranked = sorted(
+            ((name, max(0.0, float(value))) for name, value in features.items()),
+            key=lambda item: (-item[1], item[0]),
+        )[:limit]
+        total = sum(value for _, value in ranked) or 1.0
+        return [
+            {
+                "feature": feature,
+                "score": round(value, 4),
+                "share": round(value / total, 4),
+            }
+            for feature, value in ranked
+        ]
 
     def _pick_primary_cause(self, features: dict[str, float]) -> str:
         try:
@@ -133,6 +153,16 @@ class WorldModel:
             risk = torch.sigmoid(self._proj_out(encoded[:, -1, :])).item()
         return max(0.0, min(1.0, round(float(risk), 4)))
 
+    def describe_trend(self, history: list[dict[str, float]]) -> dict[str, float | str]:
+        if not history:
+            return {"direction": "flat", "slope": 0.0}
+        outflow = [float(item.get("outflow_risk", 0.0)) for item in history[-self.config.sequence_length :]]
+        if len(outflow) < 2:
+            return {"direction": "flat", "slope": 0.0}
+        slope = round((outflow[-1] - outflow[0]) / max(len(outflow) - 1, 1), 4)
+        direction = "rising" if slope > 0.03 else "falling" if slope < -0.03 else "flat"
+        return {"direction": direction, "slope": slope}
+
     def _prepare_sequence(self, history: list[dict[str, float]]) -> np.ndarray:
         seq = np.zeros((self.config.sequence_length, 3), dtype=np.float32)
         tail = history[-self.config.sequence_length :]
@@ -163,6 +193,7 @@ class AccountGraphAnalyzer:
             "rings_detected": len(cycles),
             "ring_members": cycles,
             "pyg_graph_built": self.pyg_graph is not None,
+            "largest_ring_size": max((len(cycle) for cycle in cycles), default=0),
         }
 
     def _build_pyg_graph(self) -> Any | None:
@@ -211,14 +242,18 @@ class Layer3Engine:
         self.graph_analyzer.build_graph(graph_edges)
         rings = self.graph_analyzer.detect_rings(str(txn.get("account_id", "")))
         predicted = self.world_model.predict_7d_risk(history)
+        trend = self.world_model.describe_trend(history)
         ring_penalty = min(0.2, rings["rings_detected"] * 0.05)
         predicted = max(predicted, min(1.0, round(predicted + ring_penalty, 4)))
         return Layer3Output(
             current_risk=float(root["current_risk"]),
             predicted_7d_risk=predicted,
             causal_explanation=(
-                f"{root['causal_explanation']} Ring count for account is {rings['rings_detected']}."
+                f"{root['causal_explanation']} Ring count for account is {rings['rings_detected']} "
+                f"and transaction flow trend is {trend['direction']} (slope={trend['slope']})."
             ),
+            top_causes=root.get("top_causes", []),
+            ring_summary=rings,
         ).model_dump()
 
     def build_risk_visualization(

@@ -22,6 +22,7 @@ def status(_=Depends(require_feature("logic_audit_layer1"))):
         "plugin": "layer1_logic_audit",
         "status": "active",
         "rules_loaded": len(_plugin.rule_engine.rules),
+        "severity_catalog": sorted({rule.severity for rule in _plugin.rule_engine.rules}),
         "graph_nodes": _plugin.graph.graph.number_of_nodes(),
         "graph_edges": _plugin.graph.graph.number_of_edges(),
     }

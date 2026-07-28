@@ -17,9 +17,11 @@ def test_get_root_cause_returns_contract() -> None:
         "counterfactual_risk",
         "current_risk",
         "causal_explanation",
+        "top_causes",
     }
     assert out["primary_cause"] == "new_beneficiary"
     assert 0.0 <= out["counterfactual_risk"] <= 1.0
+    assert out["top_causes"][0]["feature"] == "new_beneficiary"
 
 
 def test_world_model_predicts_bounded_7d_risk() -> None:
@@ -57,9 +59,22 @@ def test_layer3_engine_outputs_required_fields() -> None:
         ],
         graph_edges=[("A1", "A2", 1000.0), ("A2", "A3", 2000.0), ("A3", "A1", 1500.0)],
     )
-    assert set(out.keys()) == {"current_risk", "predicted_7d_risk", "causal_explanation"}
+    assert set(out.keys()) == {"current_risk", "predicted_7d_risk", "causal_explanation", "top_causes", "ring_summary"}
     assert 0.0 <= out["current_risk"] <= 1.0
     assert 0.0 <= out["predicted_7d_risk"] <= 1.0
+    assert out["ring_summary"]["rings_detected"] >= 1
+
+
+def test_world_model_describes_risk_trend() -> None:
+    model = WorldModel()
+    trend = model.describe_trend(
+        [
+            {"outflow_risk": 0.1},
+            {"outflow_risk": 0.4},
+            {"outflow_risk": 0.7},
+        ]
+    )
+    assert trend["direction"] == "rising"
 
 
 def test_plotly_visualization_builds() -> None:
