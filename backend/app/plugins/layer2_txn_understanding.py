@@ -240,12 +240,15 @@ class MultiModalEncoder:
 
         device = "cuda" if torch.cuda.is_available() else "cpu"
         self._layoutlm_model.to(device)
-        encoded = self._layoutlm_tokenizer(
-            pdf_text[:4000],
-            return_tensors="pt",
-            truncation=True,
-            max_length=512,
-        )
+        try:
+            encoded = self._layoutlm_tokenizer(
+                pdf_text[:4000],
+                return_tensors="pt",
+                truncation=True,
+                max_length=512,
+            )
+        except Exception:
+            return self._text_vector(pdf_text)
         encoded = {k: v.to(device) for k, v in encoded.items()}
         with torch.inference_mode():
             if device == "cuda":
