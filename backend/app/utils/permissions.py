@@ -63,6 +63,7 @@ FEATURE_ROLES: dict[str, tuple[str, ...]] = {
     "logic_audit_layer1": STAFF_PLUS,
     "causal_risk_layer3": STAFF_PLUS,
     "ai_auditor_layer4": STAFF_PLUS,
+    "ai_audit_orchestrator": STAFF_PLUS,
     # Office
     "billing_collections": MANAGER_PLUS,  # partner=full financial; manager=own clients
     "team_attendance": STAFF_PLUS,  # article: own attendance; manage=manager+

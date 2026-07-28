@@ -15,7 +15,7 @@ from app.middleware.tenant import tenant_middleware
 from app.routers import (
     anomalies, audit_papers, auth, autopilot, benchmarking, clients, deadlines, documents, events,
     diagnostics, health_scores, hybrid_audit, integrations, invoices, notices, organizations, query, reconciliation,
-    tasks, users, whatsapp, extensions, practice_ops, practice_gaps, client_portal, layer1_audit, layer3_causal, layer4_agent,
+    tasks, users, whatsapp, extensions, practice_ops, practice_gaps, client_portal, layer1_audit, layer3_causal, layer4_agent, audit_orchestrator,
     razorpay as razorpay_router,
     google_auth as google_auth_router, email as email_router,
 )
@@ -123,6 +123,7 @@ ROUTERS = [
     (layer1_audit.router, "/layer1-audit", "layer1-audit"),
     (layer3_causal.router, "/layer3-causal", "layer3-causal"),
     (layer4_agent.router, "/layer4-agent", "layer4-agent"),
+    (audit_orchestrator.router, "", "audit-orchestrator"),
     (razorpay_router.router, "/razorpay", "razorpay"),
     (google_auth_router.router, "/auth/google", "google-auth"),
     (email_router.router, "/email", "email"),
