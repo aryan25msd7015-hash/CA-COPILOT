@@ -80,10 +80,35 @@ def integration_health(request: Request, db: Session = Depends(get_db), _=Depend
                 "region": settings.AWS_REGION,
             },
             "ai": {
-                "status": _status(_configured(settings.ANTHROPIC_API_KEY) or _configured(settings.OPENAI_API_KEY)),
+                "status": _status(
+                    _configured(settings.ANTHROPIC_API_KEY)
+                    or _configured(settings.OPENAI_API_KEY)
+                    or _configured(settings.GROQ_API_KEY)
+                    or _configured(settings.GEMINI_API_KEY)
+                    or _configured(settings.OPENROUTER_API_KEY)
+                ),
                 "anthropic_configured": bool(settings.ANTHROPIC_API_KEY),
                 "openai_configured": bool(settings.OPENAI_API_KEY),
-                "mode": "llm_enabled" if settings.ANTHROPIC_API_KEY or settings.OPENAI_API_KEY else "deterministic_fallback",
+                "groq_configured": bool(settings.GROQ_API_KEY),
+                "gemini_configured": bool(settings.GEMINI_API_KEY),
+                "openrouter_configured": bool(settings.OPENROUTER_API_KEY),
+                "mode": (
+                    "llm_enabled"
+                    if (
+                        settings.ANTHROPIC_API_KEY
+                        or settings.OPENAI_API_KEY
+                        or settings.GROQ_API_KEY
+                        or settings.GEMINI_API_KEY
+                        or settings.OPENROUTER_API_KEY
+                    )
+                    else "deterministic_fallback"
+                ),
+                "provider_order": settings.LLM_PROVIDER_ORDER,
+                "free_tier_models": {
+                    "groq": "llama-3.1-8b-instant",
+                    "gemini": "gemini-2.0-flash",
+                    "openrouter": "meta-llama/llama-3.2-3b-instruct:free",
+                },
             },
             "email": {
                 "status": _status(bool(email_status["configured"])),
