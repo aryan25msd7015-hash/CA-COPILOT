@@ -8,13 +8,23 @@ export interface TokenResponse {
   mfa_challenge?: string;
 }
 
-export async function login(email: string, password: string, mfaCode?: string, recoveryCode?: string): Promise<TokenResponse> {
-  const res = await api.post<TokenResponse>('/auth/login', {
-    email,
-    password,
-    mfa_code: mfaCode || undefined,
-    recovery_code: recoveryCode || undefined,
-  });
+export async function login(
+  email: string,
+  password: string,
+  mfaCode?: string,
+  recoveryCode?: string,
+  headers?: Record<string, string>,
+): Promise<TokenResponse> {
+  const res = await api.post<TokenResponse>(
+    '/auth/login',
+    {
+      email,
+      password,
+      mfa_code: mfaCode || undefined,
+      recovery_code: recoveryCode || undefined,
+    },
+    headers ? { headers } : undefined,
+  );
   if (res.data.mfa_required) return res.data;
   if (!res.data.access_token || !res.data.refresh_token) {
     throw new Error('Login did not return tokens');

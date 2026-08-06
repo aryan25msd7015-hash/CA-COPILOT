@@ -22,8 +22,10 @@ export default function StaffWorkspacePage() {
       title="Intern / Staff Workbench"
       subtitle="Execution-only desk: drafts, uploads, reconciliations and fieldwork. No approvals or partner lock-downs."
       accent="staff"
+      expectedRole="article"
+      domainBound
       allowedFeatures={[
-        'command_center',
+        'workspace_staff',
         'work_daybook',
         'document_vault',
         'compliance_calendar',

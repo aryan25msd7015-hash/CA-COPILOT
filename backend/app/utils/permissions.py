@@ -31,9 +31,9 @@ STAFF_PLUS = ("partner", "manager", "article")
 FEATURE_ROLES: dict[str, tuple[str, ...]] = {
     # Command
   "command_center": STAFF_PLUS,
-  "workspace_partner": ALL_ACCESS_ROLES,
-  "workspace_ca": MANAGER_PLUS,
-  "workspace_staff": STAFF_PLUS,
+  "workspace_partner": ["partner"],
+  "workspace_ca": ["manager"],
+  "workspace_staff": ["article"],
   "exception_autopilot": STAFF_PLUS,  # article: action assigned; manage=manager+    "ask_ca_copilot": STAFF_PLUS,
     # Practice
     "clients_crm": STAFF_PLUS,

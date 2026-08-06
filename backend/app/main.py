@@ -33,9 +33,19 @@ app = FastAPI(
 trusted_hosts = [host.strip() for host in settings.TRUSTED_HOSTS.split(",") if host.strip()]
 if trusted_hosts:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=trusted_hosts)
+
+def _cors_origins() -> list[str]:
+    origins = [settings.FRONTEND_URL.strip()] if settings.FRONTEND_URL.strip() else []
+    for item in settings.FRONTEND_URLS.split(","):
+        value = item.strip()
+        if value and value not in origins:
+            origins.append(value)
+    return origins or ["http://localhost:3000"]
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL],
+    allow_origins=_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

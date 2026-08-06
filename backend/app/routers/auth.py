@@ -42,6 +42,20 @@ ROLE_PERMISSIONS = {
 }
 
 
+def enforce_expected_desk_role(user_role: str, expected_role: str | None) -> None:
+    """Reject firm logins that target a different role domain."""
+    role = (expected_role or "").strip().lower()
+    if not role:
+        return
+    if role not in {"partner", "manager", "article", "client"}:
+        return
+    if user_role != role:
+        raise HTTPException(
+            status_code=403,
+            detail=f"This domain only accepts {role} credentials",
+        )
+
+
 def _normalize_email(email: str) -> str:
     return email.strip().lower()
 
@@ -309,6 +323,8 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
             _record_failed_login(db, user, request)
             db.commit()
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    expected_role = (request.headers.get("x-expected-role") or "").strip().lower()
+    enforce_expected_desk_role(user.role, expected_role)
     _clear_login_risk(user)
     if user.mfa_enabled:
         challenge = _mfa_challenge(user)

@@ -20,8 +20,10 @@ export default function CAWorkspacePage() {
       title="CA Manager Desk"
       subtitle="Your assigned client book, review queue, and sign-off work. No firm financial or vault access."
       accent="ca"
+      expectedRole="manager"
+      domainBound
       allowedFeatures={[
-        'command_center',
+        'workspace_ca',
         'clients_crm',
         'audit_papers',
         'anomalies',

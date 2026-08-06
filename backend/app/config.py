@@ -80,9 +80,11 @@ class Settings(BaseSettings):
 
     # ── General ────────────────────────────────────────────────────────────
     FRONTEND_URL: str = "http://localhost:3000"
+    # Comma-separated extra role-domain origins allowed by CORS (partner/ca/staff/client desks).
+    FRONTEND_URLS: str = ""
     ENV: str = "development"
     SQL_ECHO: bool = False
-    TRUSTED_HOSTS: str = "localhost,127.0.0.1,testserver"
+    TRUSTED_HOSTS: str = "localhost,127.0.0.1,testserver,*.trycloudflare.com"
     PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = 30
     EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS: int = 24
     MAX_FAILED_LOGIN_ATTEMPTS: int = 5
