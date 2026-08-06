@@ -24,9 +24,10 @@ export const STAFF_PLUS: Role[] = ['partner', 'manager', 'article'];
 /** Module UI access (sidebar + page shell). */
 export const FEATURE_ROLES: Record<string, Role[]> = {
   command_center: STAFF_PLUS,
-  workspace_partner: ALL_ACCESS,
-  workspace_ca: MANAGER_PLUS,
-  workspace_staff: STAFF_PLUS,
+  // Exclusive desks — each role domain only mounts its own workspace.
+  workspace_partner: ['partner'],
+  workspace_ca: ['manager'],
+  workspace_staff: ['article'],
   exception_autopilot: STAFF_PLUS,
   ask_ca_copilot: STAFF_PLUS,
   clients_crm: STAFF_PLUS,

@@ -76,8 +76,11 @@ export default function ClientPortalLoginPage() {
   return (
     <div className="mx-auto flex min-h-screen max-w-lg flex-col justify-center bg-stone-100 px-4 py-10 text-stone-900">
       <div className="rounded-2xl border border-stone-300 bg-white p-8 shadow-sm">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-teal-800">Client portal</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-teal-800">Client portal domain</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight text-stone-950">CA · COPILOT</h1>
+        <p className="mt-2 text-sm text-stone-600">
+          Client-only domain. Firm Head, CA, and Staff desks live on separate hostnames.
+        </p>
         <p className="mt-2 text-sm text-stone-600">
           Separate login for clients — firm modules stay on the other side of the wall.
         </p>

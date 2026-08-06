@@ -80,6 +80,8 @@ class Settings(BaseSettings):
 
     # ── General ────────────────────────────────────────────────────────────
     FRONTEND_URL: str = "http://localhost:3000"
+    # Comma-separated extra role-domain origins allowed by CORS (partner/ca/staff/client desks).
+    FRONTEND_URLS: str = ""
     ENV: str = "development"
     SQL_ECHO: bool = False
     TRUSTED_HOSTS: str = "localhost,127.0.0.1,testserver"

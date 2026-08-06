@@ -41,8 +41,10 @@ export default function PartnerWorkspacePage() {
       title="Firm Head Command Deck"
       subtitle="Firm-wide oversight, CA staffing, and partner-only controls. Assign every client to a responsible CA."
       accent="partner"
+      expectedRole="partner"
+      domainBound
       allowedFeatures={[
-        'command_center',
+        'workspace_partner',
         'clients_crm',
         'team_attendance',
         'billing_collections',
