@@ -22,16 +22,16 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
-  const desk = getBrowserDesk();
+  const [desk, setDesk] = useState<AppDesk>('hub');
   const domainUrls = getClientDomainUrls();
   const deskAccount = demoAccountForDesk(desk);
   const accounts = useMemo(
     () => (desk === 'hub' ? DEMO_ACCOUNTS : deskAccount ? [deskAccount] : DEMO_ACCOUNTS),
     [desk, deskAccount],
   );
-  const [selected, setSelected] = useState<DemoAccount>(accounts[0]);
-  const [email, setEmail] = useState(accounts[0].email);
-  const [password, setPassword] = useState(accounts[0].password);
+  const [selected, setSelected] = useState<DemoAccount>(DEMO_ACCOUNTS[0]);
+  const [email, setEmail] = useState(DEMO_ACCOUNTS[0].email);
+  const [password, setPassword] = useState(DEMO_ACCOUNTS[0].password);
   const [mfaCode, setMfaCode] = useState('');
   const [recoveryCode, setRecoveryCode] = useState('');
   const [mfaRequired, setMfaRequired] = useState(false);
@@ -39,11 +39,23 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (new URLSearchParams(window.location.search).get('error') === 'wrong_desk') {
+    const resolved = getBrowserDesk();
+    setDesk(resolved);
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('error') === 'wrong_desk') {
       setError('That account belongs on a different role domain. Use the matching desk link.');
     }
   }, []);
+
+  useEffect(() => {
+    const account = demoAccountForDesk(desk);
+    if (!account) return;
+    setSelected(account);
+    setEmail(account.email);
+    setPassword(account.password);
+    setMfaCode('');
+    setRecoveryCode('');
+    setMfaRequired(false);
+  }, [desk]);
 
   function pickDemo(account: DemoAccount) {
     setSelected(account);

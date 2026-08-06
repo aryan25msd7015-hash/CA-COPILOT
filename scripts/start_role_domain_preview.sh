@@ -29,8 +29,8 @@ start_tunnel() {
 extract_url() {
   local name="$1"
   local url=""
-  for _ in $(seq 1 30); do
-    url="$(tmux_bin capture-pane -t "$name:0.0" -p -S -80 | grep -Eo 'https://[a-z0-9-]+\.trycloudflare\.com' | head -1 || true)"
+  for _ in $(seq 1 40); do
+    url="$(tmux_bin capture-pane -t "$name:0.0" -p -S -120 | tr -d '\n' | grep -Eo 'https://[a-z0-9-]+\.trycloudflare\.com' | head -1 || true)"
     if [[ -n "$url" ]]; then
       echo "$url"
       return 0

@@ -208,11 +208,14 @@ export function getBrowserDesk(): AppDesk {
     const forced = (process.env.NEXT_PUBLIC_APP_ROLE || '').trim();
     return isAppDesk(forced) ? forced : 'hub';
   }
+  // Prefer cookie stamped by middleware (works even before public env hydration).
+  const match = document.cookie.match(/(?:^|;\s*)ca_app_desk=([^;]+)/);
+  const cookieDesk = match?.[1]?.trim();
+  if (cookieDesk && isAppDesk(cookieDesk) && cookieDesk !== 'hub') return cookieDesk;
+
   const fromHost = deskFromHost(window.location.host);
   if (fromHost !== 'hub') return fromHost;
-  const match = document.cookie.match(/(?:^|;\s*)ca_app_desk=([^;]+)/);
-  const value = match?.[1]?.trim();
-  if (value && isAppDesk(value)) return value;
+
   const forced = (process.env.NEXT_PUBLIC_APP_ROLE || '').trim();
   return isAppDesk(forced) ? forced : 'hub';
 }
